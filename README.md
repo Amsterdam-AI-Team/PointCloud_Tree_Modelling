@@ -1,6 +1,6 @@
-# Urban PointCloud Processing
+# PointCloud Tree Analysis
 
-This repository contains methods for the **automatic classification and labeling of Urban PointClouds** using data fusion. The methods can serve as inspiration, or can be applied as-is under some specific assumptions:
+This repository contains methods for the **automatic extraction of various features of trees in PointClouds** using advanced methods. The methods can serve as inspiration, or can be applied as-is under some specific assumptions:
 
 1. Usage in The Netherlands (The "[Rijksdriehoek coordinate system](https://nl.wikipedia.org/wiki/Rijksdriehoeksco%C3%B6rdinaten)");
 2. Point clouds in LAS format and tiled following [specific rules](datasets); and
@@ -8,22 +8,15 @@ This repository contains methods for the **automatic classification and labeling
 
 Example [notebooks](notebooks) are provided to demonstrate the tools.
 
-<figure align="center">
-  <img
-  src="media/examples/demo.gif"
-  alt="Example: automatic labeling of a point cloud.">
-  <figcaption><b>Example:</b> automatic labeling of ground, road, buildings, cars, trees, street lights, traffic signs, city benches, and rubbish bins.</figcaption>
-</figure>
-
 ---
 
 ## Project Goal
 
-The goal of this project is to automatically locate and classify various assets such as trees, street lights, traffic signs, and other street furniture in street level point clouds. A typical approach would be to build and train a machine learning classier, but this requires a rich labeled dataset to train on. One of the main challenges in working with 3D point cloud data is that, in contrast to 2D computer vision, _no general-purpose training sets are available_. Moreover, the sparsity and non-uniform density of typical point clouds makes transferring results form one task to another difficult.
+The goal of this project is to automatically extract various features such as height, width, lowest branch, and other characteristics in point clouds. This information can be of value for tree health research and more. One of the main challenges in this project are overlapping trees, since it is difficult to distinguish in 3D point clouds which part belongs to which tree. Moreover, the sparsity and non-uniform density of typical point clouds makes robust methods difficult.
 
-However, since we are working with urban street level data, we do have access to a large number of public datasets and registries that we can use to start labeling and create an initial training set. This repository contains several **data fusion** methods that combine public datasets such as elevation data, building footprints, and topographic registries to automatically label point clouds.
+The first solution we provide is a pipeline that extracts various features from a **stand alone tree**. The input of this pipeline is a fully segmentated tree and produces a list of computed characteristics of the tree. These characteristics can be used for research or other purposes.
 
-We also provide some **post-processing** methods that further fine-tune the labels. For example, we use region growing to extend the facade of buildings to include protruding elements such as balconies and canopies that are not included in the building footprint.
+We also provide some **tree segementation** methods that splits groups of trees into individual ones. For example, one can use the tree segmentation method to retrieve individual trees that can be used as input for the stand alone tree pipeline.
 
 For a quick dive into this repository take a look at our [complete solution notebook](notebooks/0.%20Complete%20solution.ipynb).
 
@@ -85,8 +78,6 @@ This code has been tested with `Python >= 3.8` on `Linux` and `MacOS`, and shoul
 
     If you use the latter and want your code changes to take effect without re-installing the package, use the `--editable` flag for pip.
 
-**Additionally**, install `cccorelib` and `pycc` by following the [instructions on their GitHub page](https://github.com/tmontaigu/CloudCompare-PythonPlugin/blob/master/docs/building.rst#building-as-independent-wheels). Please note, these two packages are not available on the Python Package Index (PyPi).
-
 ---
 
 ## Usage
@@ -97,23 +88,6 @@ For visualisation of the resulting labelled point clouds we suggest [CloudCompar
 
 ---
 
-## Citing our work
-
-If you use (parts of) this repositiory in your work, please cite [our paper](https://arxiv.org/abs/2108.13757):
-
-```bibtex
-@article{bloembergen2021automatic,
-  title={Automatic labelling of urban point clouds using data fusion},
-  author={Bloembergen, Daan and Eijgenstein, Chris},
-  journal={arXiv preprint arXiv:2108.13757},
-  year={2021}
-}
-```
-
----
-
 ## Acknowledgements
 
-This repository was created by [Amsterdam Intelligence](https://amsterdamintelligence.com/) for the City of Amsterdam.
-
-We owe special thanks to [Dr. Sander Oude-Elberink](https://research.utwente.nl/en/persons/sander-oude-elberink) for ideas and brainstorming regarding data fusion with AHN and BGT data.
+This repository was created by [Falke Boskaljon](https://falke-boskaljon.nl/) for the City of Amsterdam.
