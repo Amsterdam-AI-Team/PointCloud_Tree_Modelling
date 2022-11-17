@@ -16,7 +16,7 @@ The goal of this project is to automatically extract various features such as he
 
 The first solution we provide is a pipeline that extracts various features from a **stand alone tree**. The input of this pipeline is a fully segmentated tree and produces a list of computed characteristics of the tree. These characteristics can be used for research or other purposes.
 
-We also provide some **tree segementation** methods that splits groups of trees into individual ones. For example, one can use the tree segmentation method to retrieve individual trees that can be used as input for the stand alone tree pipeline.
+We also provide some tree-group segementation methods that splits **groups of trees** into individual ones. For example, one can use the tree segmentation method to retrieve individual trees that can be used as input for the stand alone tree pipeline.
 
 For a quick dive into this repository take a look at our [complete solution notebook](notebooks/0.%20Complete%20solution.ipynb).
 
