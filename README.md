@@ -1,6 +1,6 @@
 # PointCloud Tree Analysis
 
-This repository contains methods for the **automatic extraction of various characteristics of trees in PointClouds** using advanced methods. The methods can serve as inspiration, or can be applied as-is under some specific assumptions:
+This repository contains methods for the **automatic extraction of various characteristics of trees in PointClouds** using advanced analytical methods. The methods can serve as inspiration, or can be applied as-is under some specific assumptions:
 
 1. Usage in The Netherlands (The "[Rijksdriehoek coordinate system](https://nl.wikipedia.org/wiki/Rijksdriehoeksco%C3%B6rdinaten)");
 2. Point clouds in LAS format and tiled following [specific rules](datasets); and
