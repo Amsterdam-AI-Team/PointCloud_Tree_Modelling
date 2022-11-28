@@ -1,6 +1,6 @@
 # PointCloud Tree Analysis
 
-This repository contains methods for the **automatic extraction of various characteristics of trees in PointClouds** using advanced analytical methods. The methods can serve as inspiration, or can be applied as-is under some specific assumptions:
+This repository contains methods for the **automatic extraction of various characteristics of trees in point clouds** using advanced analytical methods. The methods can serve as inspiration, or can be applied as-is under some specific assumptions:
 
 1. Usage in The Netherlands (The "[Rijksdriehoek coordinate system](https://nl.wikipedia.org/wiki/Rijksdriehoeksco%C3%B6rdinaten)");
 2. Point clouds in LAS format and tiled following [specific rules](datasets); and
@@ -25,20 +25,12 @@ For a quick dive into this repository take a look at our [complete solution note
 ## Folder Structure
 
  * [`datasets`](./datasets) _Demo dataset to get started_
-   * [`ahn`](./datasets/ahn) _AHN data_
-   * [`bgt`](./datasets/bgt) _BGT data_
-   * [`pointcloud`](./datasets/pointcloud) _Example urban point cloud_
+   * [`selection`](./datasets/single_selection) _Example tree point clouds_
  * [`media`](./media) _Visuals_
-   * [`examples`](./media/examples)
  * [`notebooks`](./notebooks) _Jupyter notebook tutorials_
  * [`scripts`](./scripts) _Python scripts_
- * [`src/upcp`](./src/upcp) _Python source code_
-   * [`analysis`](./src/upcp/analysis) _Dataset analysis code_
-   * [`fusion`](./src/upcp/fusion) _Data fusion code_
-   * [`preprocessing`](./src/upcp/preprocessing) _Pre-processing code_
-   * [`region_growing`](./src/upcp/region_growing) _Region growing code_
-   * [`scrapers`](./src/upcp/scrapers) _Data scrapers_
-   * [`utils`](./src/upcp/utils) _Utility functions_
+ * [`src`](./src) _Python source code_
+   * [`utils`](./src/utils) _Utility functions_
 
 ---
 
@@ -84,7 +76,7 @@ This code has been tested with `Python >= 3.8` on `Linux` and `MacOS`, and shoul
 
 We provide tutorial [notebooks](notebooks) that demonstrate how the tools can be used.
 
-For visualisation of the resulting labelled point clouds we suggest [CloudCompare](https://www.danielgm.net/cc/). Simply open the labelled .laz in CloudCompare, select the cloud, and set `Colors` to the custom `Scalar Field` named `label`. For best results, use our [custom "AMS" color scale](https://github.com/Amsterdam-AI-Team/Urban_PointCloud_Processing/raw/main/media/cc_color_scale.xml), and set "steps" to 101.
+For visualisation of the resulting labelled point clouds we suggest [CloudCompare](https://www.danielgm.net/cc/). Simply open the labelled .laz in CloudCompare.
 
 ---
 
