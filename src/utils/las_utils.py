@@ -6,8 +6,38 @@ import pathlib
 import re
 import os
 import laspy
+import open3d as o3d
 from shapely.geometry import Polygon
 
+def to_o3d(las):
+    pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(las.xyz))
+    colors = np.vstack([las.red,las.green,las.blue]).T
+    colors -= colors.min()
+    colors = colors / colors.max()
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+    return pcd
+
+def print_statistics(las):
+    """Provides statistics on las file."""
+    n = las.header.point_count
+    x_width = np.round(las.header.x_max-las.header.x_min,2)
+    x_range = np.round((las.header.x_min, las.header.x_max),2)
+    y_width = np.round(las.header.y_max-las.header.y_min,2)
+    y_range = np.round((las.header.y_min, las.header.y_max),2)
+    z_width = np.round(las.header.z_max-las.header.z_min,2)
+    z_range = np.round((las.header.z_min, las.header.z_max),2)
+
+    pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(las.xyz))
+    mean_point_distance = np.mean(pcd.compute_nearest_neighbor_distance())
+
+    print('Pointcloud Statistics:')
+    print('------------------------')
+    print('No. points:',n)
+    print('Mean distance:', np.round(mean_point_distance,2),'m')
+    print('x:', x_width,'m',x_range)
+    print('y:', y_width,'m',y_range)
+    print('z:', z_width,'m',z_range)
+    print('')
 
 def get_tilecode_from_filename(filename):
     """Extract the tile code from a file name."""
