@@ -7,13 +7,13 @@ This repository contains methods for the **automatic extraction of various chara
 
 Example [notebooks](notebooks) are provided to demonstrate the tools.
 
+![Comparison of datasets (side-view)](./imgs/20_side.png)
+
 ---
 
 ## Project Goal
 
 The goal of this project is to automatically extract various features such as height, width, lowest branch, and other characteristics in point clouds. This information can be of value for tree health research and more. One of the main challenges in this project are overlapping trees, since it is difficult to distinguish in 3D point clouds which part belongs to which tree. Moreover, the sparsity and non-uniform density of typical point clouds makes robust methods difficult.
-
-![Comparison of datasets (side-view)](./imgs/20_side.png)
 
 The first solution we provide is a pipeline that extracts various features from a **stand alone tree**. The input of this pipeline is a fully segmentated tree and produces a list of computed characteristics of the tree. These characteristics can be used for research or other purposes.
 
