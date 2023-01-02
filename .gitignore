@@ -1,7 +1,7 @@
 # Project specific files
 .laz
 .las
-.xyz
+*.xyz
 .png
 
 # Byte-compiled / optimized / DLL files
