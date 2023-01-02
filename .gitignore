@@ -2,6 +2,7 @@
 *.laz
 *.las
 *.xyz
+*.ply
 *.png
 
 # Byte-compiled / optimized / DLL files
