@@ -4,6 +4,9 @@ import numpy as np
 import laspy
 import open3d as o3d
 
+
+######## PointCloud utils ##########
+
 def point_density(pcd):
     """Compute the average nearest neighbor distance for the point cloud."""
     dist = pcd.compute_nearest_neighbor_distance()  
@@ -91,3 +94,15 @@ def display_inlier_outlier(cloud, ind, inlier_color=[.4,.4,.4], outlier_color=[1
 def trace_back(trace, ind):
     trace_ind = np.hstack([trace[i] for i in ind])
     return trace_ind
+
+
+######## MESH utils ##########
+
+def simplify_mesh(mesh, num_triangles):
+    return mesh.simplify_quadric_decimation(target_number_of_triangles=num_triangles)
+
+def show_mesh(mesh, color=None):
+    if color:
+        mesh.paint_uniform_color(color)
+    mesh.compute_vertex_normals()
+    o3d.visualization.draw_geometries([mesh])

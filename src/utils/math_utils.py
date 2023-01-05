@@ -129,3 +129,73 @@ def minimum_bounding_rectangle(points):
     dims = [(x1 - x2), (y1 - y2)]
 
     return min_bounding_rect, hull_points, min(dims), max(dims), center_point
+
+
+def rodrigues_rot(points, vector1, vector2):
+    """RODRIGUES ROTATION
+    - Rotate given points based on a starting and ending vector
+    - Axis k and angle of rotation theta given by vectors n0,n1
+    P_rot = P*cos(theta) + (k x P)*sin(theta) + k*<k,P>*(1-cos(theta))"""
+
+    if points.ndim == 1:
+        points = points[np.newaxis, :]
+
+    vector1 = vector1 / np.linalg.norm(vector1)
+    vector2 = vector2 / np.linalg.norm(vector2)
+    k = np.cross(vector1, vector2)
+    if np.sum(k) != 0:
+        k = k / np.linalg.norm(k)
+    theta = np.arccos(np.dot(vector1, vector2))
+
+    # MATRIX MULTIPLICATION
+    P_rot = np.zeros((len(points), 3))
+    for i in range(len(points)):
+        P_rot[i] = (
+            points[i] * np.cos(theta)
+            + np.cross(k, points[i]) * np.sin(theta)
+            + k * np.dot(k, points[i]) * (1 - np.cos(theta))
+        )
+    return P_rot
+
+def circumferential_completeness_index(fitted_circle_centre, estimated_radius, slice_points):
+    """
+    Computes the Circumferential Completeness Index (CCI) of a fitted circle.
+    Args:
+        fitted_circle_centre: x, y coords of the circle centre
+        estimated_radius: circle radius
+        slice_points: the points the circle was fitted to
+    Returns:
+        CCI
+    """
+
+    sector_angle = 4.5  # degrees
+    num_sections = int(np.ceil(360 / sector_angle))
+    sectors = np.linspace(-180, 180, num=num_sections, endpoint=False)
+
+    centre_vectors = slice_points[:, :2] - fitted_circle_centre
+    norms = np.linalg.norm(centre_vectors, axis=1)
+
+    centre_vectors = centre_vectors / np.atleast_2d(norms).T
+    centre_vectors = centre_vectors[
+        np.logical_and(norms >= 0.8 * estimated_radius, norms <= 1.2 * estimated_radius)
+    ]
+
+    sector_vectors = np.vstack((np.cos(sectors), np.sin(sectors))).T
+    CCI = (
+        np.sum(
+            [
+                np.any(
+                    np.degrees(
+                        np.arccos(
+                            np.clip(np.einsum("ij,ij->i", np.atleast_2d(sector_vector), centre_vectors), -1, 1)
+                        )
+                    )
+                    < sector_angle / 2
+                )
+                for sector_vector in sector_vectors
+            ]
+        )
+        / num_sections
+    )
+
+    return CCI
