@@ -3,6 +3,7 @@
 import numpy as np
 import laspy
 import open3d as o3d
+import trimesh
 
 
 ######## PointCloud utils ##########
@@ -106,3 +107,6 @@ def show_mesh(mesh, color=None):
         mesh.paint_uniform_color(color)
     mesh.compute_vertex_normals()
     o3d.visualization.draw_geometries([mesh])
+
+def to_trimesh(mesh):
+    return trimesh.base.Trimesh(mesh.vertices, mesh.triangles)
