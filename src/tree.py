@@ -12,10 +12,12 @@ from descartes import PolygonPatch
 from alphashape import alphashape
 
 from misc.smallestenclosingcircle import make_circle
-from misc.fitcyclinders import fit_cylinders_to_stem
+from misc.fitcyclinders import fit_cylinders_to_stem, fit_vertical_cylinder_3D
 import utils.o3d_utils as o3d_utils
 import utils.graph_utils as graph_utils
 import utils.math_utils as math_utils
+import utils.plot_utils as plot_utils
+import utils.clip_utils as clip_utils
 
 
 from labels import Labels
@@ -279,18 +281,64 @@ def stem_angle(stem_cylinders):
     """Function to estimate stem angle given fitted cylinders"""
     return math_utils.vector_angle(stem_cylinders[-1,:3] - stem_cylinders[0,:3])
 
-def stem_analysis(stem_cloud):
+
+def diamter_at_breastheight(stem_cloud, breastheight):
+    """Function to estimate diameter at breastheight."""
+    stem_poits = np.asarray(stem_cloud.points)
+    z = stem_poits[:,2].min() + breastheight
+
+    # clip slice
+    mask = clip_utils.axis_clip(stem_poits, 2, z-.1, z+.1)
+    slice = stem_poits[mask]
+
+    # fit cylinder
+    radius = fit_vertical_cylinder_3D(slice, .04)[2]
+
+    return 2*radius
+
+
+def get_stem_location(stem_cloud, trim=1):
+    """Function to get stem location based on cylinder fit."""
+
+    # trim and downsample stem
+    stem_pts = np.asarray(stem_cloud.points)
+    stem_min_z = stem_pts[:,2].min()
+    # mask = np.where(stem_pts[:,2] < stem_min_z + trim)[0]
+    # cloud_ = stem_cloud.select_by_index(mask)
+    pts_ = stem_pts[stem_pts[:,2] < stem_min_z + trim]
+
+    # fit cylinder to breast
+    cyl_center, cyl_axis, cyl_radius = fit_vertical_cylinder_3D(pts_, .05)[:3]
+    # cyl_mesh = trimesh.creation.cylinder(radius=cyl_radius,
+    #                     sections=20, 
+    #                     segment=(cyl_center-cyl_axis*trim/2,cyl_center+cyl_axis*trim/2)).as_open3d
+
+    stem_location = math_utils.line_plane_intersection(
+                     np.array([0,0,1]),
+                     np.array([0,0,stem_min_z]),
+                     cyl_center,
+                     cyl_axis)
+
+    return stem_location
+
+
+def stem_analysis(stem_cloud, breastheight=1.3):
     """Function to analyse tree crown o3d point cloud."""
 
+    # breast analysis
+    dbh = diamter_at_breastheight(stem_cloud, breastheight)
+
+    # stem analysis
+    stem_location = get_stem_location(stem_cloud, 1)
     cyl_array = fit_cylinders_to_stem(stem_cloud, .25)
     angle = stem_angle(cyl_array)
-    mean_radius = cyl_array[:,3].mean()
 
     stem = {
+        'stem_DBH': dbh,
+        'stem_location': stem_location,
         'stem_height': stem_height(stem_cloud),
         'stem_angle': angle,
-        'stem_radius': mean_radius,
-        'stem_circumference':  2*mean_radius * np.pi,
+        'stem_circumference_BH': dbh * np.pi,
         'stem_CCI': (np.min(cyl_array[:,4]), np.max(cyl_array[:,4])),
         'stem_mesh': o3d_utils.mesh_from_cylinders(cyl_array, tree_colors['stem'])
     }

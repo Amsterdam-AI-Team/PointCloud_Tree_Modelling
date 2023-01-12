@@ -20,6 +20,30 @@ logger = logging.getLogger(__name__)
 
 
 @jit(nopython=True, cache=True)
+def axis_clip(points, axis, lower=-np.inf, upper=np.inf):
+    """
+    Clip all points within bounds of a certain axis.
+
+    Parameters
+    ----------
+    points : array of shape (n_points, 2)
+        The points.
+    axis : int
+        The axis to clip along.
+    lower : float (default: -inf)
+        Lower bound of the axis.
+    upper : float (default: inf)
+        Upperbound of the axis.
+
+    Returns
+    -------
+    A boolean mask with True entries for all points within the rectangle.
+    """
+    clip_mask = ((points[:, axis] <= upper) & (points[:, axis] >= lower))
+    return clip_mask
+
+
+@jit(nopython=True, cache=True)
 def rectangle_clip(points, rect):
     """
     Clip all points within a rectangle.

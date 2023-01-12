@@ -35,3 +35,15 @@ def plot_stem_cylinders(stem_cylinders, resolution=15, cloud=None):
             geometries.append(cloud)
 
         o3d.visualization.draw_geometries(geometries)
+
+
+def cloud_cylinder_fit(cloud, cylinder_mesh):
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    ax.plot_trisurf(*zip(*cylinder_mesh.vertices), triangles=cylinder_mesh.triangles, color=[.2,.8,.2], alpha=0.3, linewidth=.5, edgecolor=[0,0,0])
+    breast_pts = np.asarray(cloud.points)
+    ax.scatter(breast_pts[:,0], breast_pts[:,1], breast_pts[:,2], s=0.5, alpha=0.9, c=np.asarray(cloud.colors))
+    ax.axis('equal')
+    ax.view_init(30, 25)
+    ax.set_title('Cylinder fit to cloud')
+    plt.show()

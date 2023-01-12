@@ -199,3 +199,16 @@ def circumferential_completeness_index(fitted_circle_centre, estimated_radius, s
     )
 
     return CCI
+
+
+def line_plane_intersection(plane_point, plane_normal, line_point, line_direciton, epsilon=1e-6):
+    
+    ndotu = plane_normal.dot(line_direciton)
+    if abs(ndotu) < epsilon:
+        raise RuntimeError("no intersection or line is within plane")
+
+    w = line_point - plane_point
+    si = -plane_normal.dot(w) / ndotu
+    intersection_point = w + si * line_direciton + plane_point
+
+    return intersection_point

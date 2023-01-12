@@ -93,6 +93,7 @@ def curvature_filter(pcd, radius, min1=0, max1=100,
 
     return mask
 
+
 def display_inlier_outlier(cloud, ind, inlier_color=[.4,.4,.4], outlier_color=[1,0,0]):
     """Show point cloud with coloured inliers and outliers."""
     inlier_cloud = cloud.select_by_index(ind)
