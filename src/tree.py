@@ -28,7 +28,7 @@ from labels import Labels
 tree_colors = {
             'stem': [0.36,0.25, 0.2],
             'foliage': [0,0.48,0],
-            'wood': [0.55, 0.27, 0.07]
+            'wood': [0.45, 0.23, 0.07]
 }
 
 # TREE PROCESSING
@@ -275,11 +275,15 @@ def stem_height(stem_cloud):
     return o3d_utils.cloud_height(stem_cloud)
 
 
+def stem_angle(stem_cylinders):
+    """Function to estimate stem angle given fitted cylinders"""
+    return math_utils.vector_angle(stem_cylinders[-1,:3] - stem_cylinders[0,:3])
+
 def stem_analysis(stem_cloud):
     """Function to analyse tree crown o3d point cloud."""
 
     cyl_array = fit_cylinders_to_stem(stem_cloud, .25)
-    angle = math_utils.vector_angle(cyl_array[-1,:3] - cyl_array[0,:3])
+    angle = stem_angle(cyl_array)
     mean_radius = cyl_array[:,3].mean()
 
     stem = {
@@ -313,14 +317,14 @@ def show_tree(cloud, labels, skeleton=None):
 
     # Skeleton
     if skeleton:
-        colors = [[0.3, 0.3, 0.3] for i in range(len(skeleton['edges']))]
+        colors = [[.8, 0.35, 0] for i in range(len(skeleton['edges']))]
         line_set = o3d.geometry.LineSet()
         line_set.points = o3d.utility.Vector3dVector(skeleton['vertices'])
         line_set.lines = o3d.utility.Vector2iVector(skeleton['edges'])
         line_set.colors = o3d.utility.Vector3dVector(colors)
 
         skeleton_cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(skeleton['vertices']))
-        skeleton_cloud = skeleton_cloud.paint_uniform_color([0.1,0.1,0.1])
+        skeleton_cloud = skeleton_cloud.paint_uniform_color([0,0,0])
 
         o3d_geometries.extend([line_set, skeleton_cloud])
 

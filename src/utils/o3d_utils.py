@@ -156,6 +156,7 @@ def plot_mesh(mesh):
     fig = plt.figure()
     ax = plt.axes(projection='3d')
     ax.plot_trisurf(*zip(*mesh.vertices), triangles=mesh.triangles, color=color)
+    ax.axis('equal')
     plt.show()
 
 
