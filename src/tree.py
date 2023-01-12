@@ -25,9 +25,11 @@ from labels import Labels
 #     Convenience class for point cloud tree analysis.
 #     """
 
-tree_colors = {'stam': 'green',
-                'foliage': [0,0.78,0],
-                'boom': 'crimson'}
+tree_colors = {
+            'stem': [0.36,0.25, 0.2],
+            'foliage': [0,0.48,0],
+            'wood': [0.55, 0.27, 0.07]
+}
 
 # TREE PROCESSING
 def leafwood_classificiation(tree_cloud, method):
@@ -99,7 +101,7 @@ def reconstruct_skeleton(tree_cloud, exe_path):
     return skeleton
 
 
-def stem_crown_split(tree_cloud, skeleton_graph):
+def skeleton_split(tree_cloud, skeleton_graph):
     """Function to split the stem from the crown using the reconstructed tree skeleton."""
 
     # get start node and retrieve path
@@ -130,19 +132,21 @@ def stem_crown_split(tree_cloud, skeleton_graph):
 def crown_to_mesh(crown_cloud, method, alpha=.8):
     """Function to convert to o3d crown point cloud to a mesh."""
 
+    crown_cloud_sampled = crown_cloud.voxel_down_sample(0.25)
+
     if method == 'alphashape':
-        pts = np.asarray(crown_cloud.points)
+        pts = np.asarray(crown_cloud_sampled.points)
         mesh = alphashape(pts, alpha)
         clean_points, clean_faces = pymeshfix.clean_from_arrays(mesh.vertices,  mesh.faces)
         mesh = trimesh.base.Trimesh(clean_points, clean_faces)
         mesh.fix_normals()
         o3d_mesh = mesh.as_open3d
     else:
-        o3d_mesh, _ = crown_cloud.compute_convex_hull()
+        o3d_mesh, _ = crown_cloud_sampled.compute_convex_hull()
 
     o3d_mesh.compute_vertex_normals()
     o3d_mesh.paint_uniform_color(tree_colors['foliage'])
-    return o3d_mesh
+    return o3d_mesh, o3d_mesh.get_volume()
 
 
 def crown_diameter(crown_cloud):
@@ -150,7 +154,6 @@ def crown_diameter(crown_cloud):
 
     proj_pts = o3d_utils.project(crown_cloud, 2, .2)
     radius = make_circle(proj_pts)[2]
-    print(f'Crown diamter: {radius*2:.2f} m')
 
     # Visualize
     # fig, ax = plt.subplots(figsize=(6, 6))
@@ -203,7 +206,6 @@ def crown_shape(crown_cloud):
     elif a_rd < b_rd > c_rd:
         shape = Labels.SPHERICAL
 
-    print(f'Crown shape is `{Labels.get_str(shape)}`')
     return shape
 
 
@@ -253,15 +255,15 @@ def project_tree(crown_cloud, stem_cloud):
 def crown_analysis(crown_cloud, method):
     """Function to analyse tree crown o3d point cloud."""
 
-    mesh = crown_to_mesh(crown_cloud, method)
+    mesh, volume = crown_to_mesh(crown_cloud, method)
 
     crown = {
-        'height': crown_height(crown_cloud),
-        'base_height': crown_base_height(crown_cloud),
-        'diameter': crown_diameter(crown_cloud),
-        'shape': Labels.get_str(crown_shape(crown_cloud)),
-        'volume': mesh.get_volume(),
-        'mesh': mesh
+        'crown_height': crown_height(crown_cloud),
+        'crown_base_height': crown_base_height(crown_cloud),
+        'crown_diameter': crown_diameter(crown_cloud),
+        'crown_shape': Labels.get_str(crown_shape(crown_cloud)),
+        'crown_volume': volume,
+        'crown_mesh': mesh
     }
 
     return crown
@@ -281,12 +283,12 @@ def stem_analysis(stem_cloud):
     mean_radius = cyl_array[:,3].mean()
 
     stem = {
-        'height': stem_height(stem_cloud),
-        'angle': angle,
-        'radius': mean_radius,
-        'circumference':  2*mean_radius * np.pi,
-        'CCI': (np.min(cyl_array[:,4]), np.max(cyl_array[:,4])),
-        'mesh': o3d_utils.mesh_from_cylinders(cyl_array)
+        'stem_height': stem_height(stem_cloud),
+        'stem_angle': angle,
+        'stem_radius': mean_radius,
+        'stem_circumference':  2*mean_radius * np.pi,
+        'stem_CCI': (np.min(cyl_array[:,4]), np.max(cyl_array[:,4])),
+        'stem_mesh': o3d_utils.mesh_from_cylinders(cyl_array, tree_colors['stem'])
     }
 
     return stem
@@ -301,11 +303,11 @@ def show_tree(cloud, labels, skeleton=None):
 
     # Wood
     wood_cloud = cloud.select_by_index(np.where(labels==Labels.WOOD)[0])
-    wood_cloud.paint_uniform_color(tree_colors['boom'])
+    wood_cloud.paint_uniform_color(tree_colors['wood'])
 
     # Stem
     stem_cloud = cloud.select_by_index(np.where(labels==Labels.STEM)[0])
-    stem_cloud.paint_uniform_color(tree_colors['stam'])
+    stem_cloud.paint_uniform_color(tree_colors['stem'])
 
     o3d_geometries = [leafs_cloud, wood_cloud, stem_cloud]
 
@@ -325,7 +327,37 @@ def show_tree(cloud, labels, skeleton=None):
     o3d.visualization.draw_geometries(o3d_geometries)
 
 
-def analyse_tree(tree_cloud, adTree_exe, filter_leaves=None):
+def tree_separate(tree_cloud, adTree_exe, filter_leaves=None):
+    """Function to split stem from o3d tree point cloud."""
+
+    # 1. Classify and filter leaves (optional)
+    labels = np.ones(len(tree_cloud.points), dtype=int)
+    wood_cloud = tree_cloud
+    if filter_leaves:
+        print(f"Leaf-wood classification using `{filter_leaves}` method...")
+        labels = leafwood_classificiation(tree_cloud, method=filter_leaves)
+        wood_cloud = tree_cloud.select_by_index(np.where(labels==Labels.WOOD)[0])
+        print(f"Done. {np.sum(labels==Labels.WOOD)}/{len(labels)} points wood.")
+
+    # 2. Skeleton reconstruction
+    print("Reconstructing tree skeleton...")
+    skeleton = reconstruct_skeleton(wood_cloud, adTree_exe)
+    print(f"Done. Skeleton constructed containing {len(skeleton['vertices'])} nodes")
+
+    # 3. Stem-crow splitting
+    print("Splitting stem form crown...")
+    mask = skeleton_split(tree_cloud, skeleton['graph'])
+    labels[mask] = Labels.STEM
+    print(f"Done. {np.sum(mask)}/{len(labels)} points labeled as stem.")
+
+    stem_cloud = tree_cloud.select_by_index(np.where(mask)[0])
+    crown_cloud = tree_cloud.select_by_index(np.where(mask)[0], invert=True)
+
+    return stem_cloud, crown_cloud
+
+
+def analyse_tree(tree_cloud, adTree_exe, filter_leaves=None,
+                 crown_model_method='alphashape', show_result=False):
     """Function to analyse o3d point cloud tree."""
 
     # 1. Classify and filter leaves (optional)
@@ -336,7 +368,7 @@ def analyse_tree(tree_cloud, adTree_exe, filter_leaves=None):
         labels = leafwood_classificiation(tree_cloud, method=filter_leaves)
         wood_cloud = tree_cloud.select_by_index(np.where(labels==Labels.WOOD)[0])
         print(f"Done. {np.sum(labels==Labels.WOOD)}/{len(labels)} points wood.")
-    
+
     # 2. Skeleton reconstruction
     print("Reconstructing tree skeleton...")
     skeleton = reconstruct_skeleton(wood_cloud, adTree_exe)
@@ -344,21 +376,21 @@ def analyse_tree(tree_cloud, adTree_exe, filter_leaves=None):
 
     # 3. Stem-crow splitting
     print("Splitting stem form crown...")
-    stem_mask = stem_crown_split(skeleton['graph'], tree_cloud)
-    labels[stem_mask] = Labels.STEM
-    print(f"Done. {np.sum(stem_mask)}/{len(labels)} points labeled as stem.")
+    mask = skeleton_split(tree_cloud, skeleton['graph'])
+    labels[mask] = Labels.STEM
+    print(f"Done. {np.sum(mask)}/{len(labels)} points labeled as stem.")
 
-    # 4. Stem analysis
-    print("Analysing stem...")
-    stem_cloud = tree_cloud.select_by_index(np.where(stem_mask)[0])
-    stem = stem_analysis(stem_cloud)
-
-    # 5. Crown analysis
-    print("Analysing crown...")
-    crown_cloud = tree_cloud.select_by_index(np.where(stem_mask)[0], invert=True)
-    crown = crown_analysis(crown_cloud, 'alphashape')
+    # 4. Analysis
+    print("Crown & Stem Analysis...")
+    stem_cloud = tree_cloud.select_by_index(np.where(mask)[0])
+    crown_cloud = tree_cloud.select_by_index(np.where(mask)[0], invert=True)
+    stem_stats = stem_analysis(stem_cloud)
+    crown_stats = crown_analysis(crown_cloud, crown_model_method)
+    tree_stats = {**stem_stats, **crown_stats}
+    print("Done.")
 
     # Show tree
-    show_tree(tree_cloud, labels, skeleton)
+    if show_result:
+        show_tree(tree_cloud, labels, skeleton)
 
-    return labels, stem, crown
+    return tree_stats

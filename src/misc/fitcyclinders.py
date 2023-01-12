@@ -6,7 +6,6 @@ import numpy as np
 import utils.math_utils as math_utils
 from scipy.optimize import leastsq
 from scipy.spatial.transform import Rotation as R
-from tqdm import tqdm
 
 
 def fit_vertical_cylinder_3D(xyz, th):
@@ -75,7 +74,8 @@ def fit_cylinders_to_stem(stem_cloud, slice_thickness):
     """
     Fits a 3D line to the skeleton points cluster provided.
     Uses this line as the major axis/axial vector of the cylinder to be fitted.
-    Fits a series of circles perpendicular to this axis to the point cloud of this particular stem segment.
+    Fits a series of circles perpendicular to this axis
+    to the point cloud of this particular stem segment.
     Args:
         pcd: The cluster of points belonging to the segment of the branch.
     Returns:
@@ -86,22 +86,22 @@ def fit_cylinders_to_stem(stem_cloud, slice_thickness):
     stem_cloud_sampled = stem_cloud.voxel_down_sample(0.01)
     points = np.asarray(stem_cloud_sampled.points)[:,:3]
     min_z, max_z = points[:,2].min(), points[:,2].max()
-    center, axis, radius, inliers, CCI = fit_vertical_cylinder_3D(points, .1)
+    center, axis, _, _, _ = fit_vertical_cylinder_3D(points, .1)
 
     # slice cylinder
     b_center = center + axis * (min_z - center[2] + slice_thickness/2),
     t_center = center + axis * (max_z - center[2] - slice_thickness/2)
     length = np.linalg.norm(t_center - b_center)
     line_centers = np.linspace(b_center, t_center, int(length / slice_thickness))
-    
+
     # fit cylinders per slice
     cyl_array = np.zeros((0, 5))
-    for line_center in tqdm(line_centers):
+    for line_center in line_centers:
         plane_slice = points[
-                        np.linalg.norm(abs(axis * (points - line_center)), axis=1) < (slice_thickness / 2)
-                    ]
+            np.linalg.norm(abs(axis * (points - line_center)), axis=1) < (slice_thickness / 2)
+        ]
         if plane_slice.shape[0] > 0:
-                    cyl_center, _, cyl_radius, _, cyl_CCI = fit_vertical_cylinder_3D(plane_slice, .03)
-                    cyl_array = np.vstack((cyl_array, np.array([*cyl_center,cyl_radius,cyl_CCI])))
+            cyl_center, _, cyl_radius, _, cyl_cci = fit_vertical_cylinder_3D(plane_slice, .03)
+            cyl_array = np.vstack((cyl_array, np.array([*cyl_center,cyl_radius,cyl_cci])))
 
     return cyl_array

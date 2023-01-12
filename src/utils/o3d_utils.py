@@ -5,6 +5,9 @@ import laspy
 import open3d as o3d
 import trimesh
 from misc.quaternion import Quaternion
+import matplotlib.pyplot as plt
+from alphashape import alphashape
+from descartes import PolygonPatch
 
 
 ######## PointCloud utils ##########
@@ -126,16 +129,55 @@ def cloud_height(cloud):
 def simplify_mesh(mesh, num_triangles):
     return mesh.simplify_quadric_decimation(target_number_of_triangles=num_triangles)
 
+
+def project_mesh(mesh):
+
+    # make shape
+    pts = np.array(mesh.vertices)[:,:2]
+    shape = alphashape(pts, 0.8)
+    mesh_center = np.hstack(shape.centroid.coords)
+
+    # Initialize plot
+    _, axes = plt.subplots()
+    axes.plot(*mesh_center, marker='x', c='k')
+    axes.add_patch(PolygonPatch(shape, alpha=.8, color='green', label='Stem'))
+    axes.legend()
+    axes.set_title('Tree Projection')
+    plt.show()
+
+
+def plot_mesh(mesh):
+    colors = np.asarray(mesh.vertex_colors)
+    if len(colors) > 0:
+        color = colors[0]
+    else:
+        color = [.7,.7,.7]
+
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    ax.plot_trisurf(*zip(*mesh.vertices), triangles=mesh.triangles, color=color)
+    plt.show()
+
+
 def show_mesh(mesh, color=None):
     if color:
         mesh.paint_uniform_color(color)
     mesh.compute_vertex_normals()
     o3d.visualization.draw_geometries([mesh])
 
+
+def show_mesh_cloud(mesh, cloud):
+
+    lines = o3d.geometry.LineSet.create_from_triangle_mesh(mesh)
+    lines.paint_uniform_color([0.8, .2, 0])
+    o3d.visualization.draw_geometries([cloud, lines])
+
+
 def to_trimesh(mesh):
     return trimesh.base.Trimesh(mesh.vertices, mesh.triangles)
 
-def mesh_from_cylinders(cyl_array, resolution=15):
+
+def mesh_from_cylinders(cyl_array, color=[0.7,0.7,0.7], resolution=15):
     """Function to construct o3d mesh from cylindrical sections."""
     circle_fits = [(rim[:3], rim[3]) for rim in cyl_array]
     num_slices = len(circle_fits)
@@ -187,5 +229,6 @@ def mesh_from_cylinders(cyl_array, resolution=15):
 
     # create mesh
     mesh = trimesh.base.Trimesh(vertices, faces).as_open3d
+    mesh.paint_uniform_color(color)
 
     return mesh
