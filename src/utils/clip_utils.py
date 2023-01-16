@@ -14,7 +14,7 @@ from numba import jit
 import numba
 import logging
 
-from ..utils import math_utils
+import utils.math_utils as math_utils
 
 logger = logging.getLogger(__name__)
 

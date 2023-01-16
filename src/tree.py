@@ -18,6 +18,7 @@ import utils.graph_utils as graph_utils
 import utils.math_utils as math_utils
 import utils.plot_utils as plot_utils
 import utils.clip_utils as clip_utils
+from utils.interpolation import FastGridInterpolator
 
 
 from labels import Labels
@@ -216,7 +217,7 @@ def crown_height(crown_cloud):
     return o3d_utils.cloud_height(crown_cloud)
 
 
-def crown_base_height(crown_cloud, ahn_z=0):
+def crown_base_height(crown_cloud, ahn_z):
     """Function to get base height of tree."""
     height = crown_cloud.get_min_bound()[2] - ahn_z
     return height
@@ -254,27 +255,26 @@ def project_tree(crown_cloud, stem_cloud):
     plt.show()
 
 
-def crown_analysis(crown_cloud, method):
+def crown_analysis(crown_cloud, method, stats, ahn_z=0):
     """Function to analyse tree crown o3d point cloud."""
 
+    # crown analysis
     mesh, volume = crown_to_mesh(crown_cloud, method)
+    stats['crown_height'] = crown_height(crown_cloud)
+    stats['crown_baseheight'] = crown_base_height(crown_cloud, ahn_z)
+    stats['crown_diameter'] = crown_diameter(crown_cloud)
+    stats['crown_shape'] = Labels.get_str(crown_shape(crown_cloud))
+    stats['crown_volume'] = volume
+    stats['crown_mesh'] = mesh
 
-    crown = {
-        'crown_height': crown_height(crown_cloud),
-        'crown_base_height': crown_base_height(crown_cloud),
-        'crown_diameter': crown_diameter(crown_cloud),
-        'crown_shape': Labels.get_str(crown_shape(crown_cloud)),
-        'crown_volume': volume,
-        'crown_mesh': mesh
-    }
-
-    return crown
+    return stats
 
 
 # STEM ANALYSIS
-def stem_height(stem_cloud):
+def stem_height(stem_cloud, ahn_z):
     """Function to get the stem height."""
-    return o3d_utils.cloud_height(stem_cloud)
+    height = stem_cloud.get_max_bound()[2] - ahn_z
+    return height
 
 
 def stem_angle(stem_cylinders):
@@ -282,7 +282,11 @@ def stem_angle(stem_cylinders):
     return math_utils.vector_angle(stem_cylinders[-1,:3] - stem_cylinders[0,:3])
 
 
-def diamter_at_breastheight(stem_cloud, breastheight):
+def stem_bearing(stem_cylinders):
+    return math_utils.vector_bearing(stem_cylinders[-1,:2] - stem_cylinders[0,:2])
+
+
+def diameter_at_breastheight(stem_cloud, breastheight):
     """Function to estimate diameter at breastheight."""
     stem_poits = np.asarray(stem_cloud.points)
     z = stem_poits[:,2].min() + breastheight
@@ -317,33 +321,27 @@ def get_stem_location(stem_cloud, trim=1):
                      np.array([0,0,1]),
                      np.array([0,0,stem_min_z]),
                      cyl_center,
-                     cyl_axis)
+                     cyl_axis)[:2]
 
     return stem_location
 
 
-def stem_analysis(stem_cloud, breastheight=1.3):
+def stem_analysis(stem_cloud, stats, breastheight=1.3, ahn_z=0):
     """Function to analyse tree crown o3d point cloud."""
 
     # breast analysis
-    dbh = diamter_at_breastheight(stem_cloud, breastheight)
+    dbh = diameter_at_breastheight(stem_cloud, breastheight)
+    stats['DBH'] = dbh
+    stats['circumference_BH'] = dbh * np.pi
 
     # stem analysis
-    stem_location = get_stem_location(stem_cloud, 1)
     cyl_array = fit_cylinders_to_stem(stem_cloud, .25)
-    angle = stem_angle(cyl_array)
+    stats['stem_height'] = stem_height(stem_cloud, ahn_z)
+    stats['stem_angle'] = stem_angle(cyl_array)
+    stats['stem_CCI'] = (np.min(cyl_array[:,4]), np.max(cyl_array[:,4]))
+    stats['stem_mesh'] = o3d_utils.mesh_from_cylinders(cyl_array, tree_colors['stem'])
 
-    stem = {
-        'stem_DBH': dbh,
-        'stem_location': stem_location,
-        'stem_height': stem_height(stem_cloud),
-        'stem_angle': angle,
-        'stem_circumference_BH': dbh * np.pi,
-        'stem_CCI': (np.min(cyl_array[:,4]), np.max(cyl_array[:,4])),
-        'stem_mesh': o3d_utils.mesh_from_cylinders(cyl_array, tree_colors['stem'])
-    }
-
-    return stem
+    return stats
 
 
 def show_tree(cloud, labels, skeleton=None):
@@ -408,9 +406,11 @@ def tree_separate(tree_cloud, adTree_exe, filter_leaves=None):
     return stem_cloud, crown_cloud
 
 
-def analyse_tree(tree_cloud, adTree_exe, filter_leaves=None,
+def analyse_tree(tree_cloud, adTree_exe, ahn_tile=None, filter_leaves=None,
                  crown_model_method='alphashape', show_result=False):
     """Function to analyse o3d point cloud tree."""
+
+    tree_stats = {}
 
     # 1. Classify and filter leaves (optional)
     labels = np.ones(len(tree_cloud.points), dtype=int)
@@ -436,9 +436,16 @@ def analyse_tree(tree_cloud, adTree_exe, filter_leaves=None,
     print("Crown & Stem Analysis...")
     stem_cloud = tree_cloud.select_by_index(np.where(mask)[0])
     crown_cloud = tree_cloud.select_by_index(np.where(mask)[0], invert=True)
-    stem_stats = stem_analysis(stem_cloud)
-    crown_stats = crown_analysis(crown_cloud, crown_model_method)
-    tree_stats = {**stem_stats, **crown_stats}
+    tree_stats['rd_coords'] = get_stem_location(stem_cloud, 1)
+    if ahn_tile:
+        fast_z = FastGridInterpolator(ahn_tile['x'], ahn_tile['y'],
+                                    ahn_tile['ground_surface'])
+        tree_ahn_z = fast_z(tree_stats['rd_coords'].reshape(1,2))[0]
+    else:
+        tree_ahn_z = stem_cloud.get_min_bound()[2]
+    tree_stats['ground_level'] = tree_ahn_z
+    tree_stats = stem_analysis(stem_cloud, tree_stats, ahn_z=tree_ahn_z)
+    tree_stats = crown_analysis(crown_cloud, crown_model_method, tree_stats, ahn_z=tree_ahn_z)
     print("Done.")
 
     # Show tree

@@ -18,6 +18,14 @@ def vector_angle(u, v=np.array([0., 0., 1.])):
     return np.rad2deg(np.arccos(clip))
 
 
+def vector_bearing(v):
+    """Function that converts vector (x,y) to [0,360] bearing."""
+    v_u = np.array(v) / np.linalg.norm(v)
+    initial_bearing = np.rad2deg(np.arctan2(v_u[1], -v_u[0]) - np.arctan2(1, 0))
+    compass_bearing = (initial_bearing + 360) % 360
+    return compass_bearing
+
+
 @jit(nopython=True, cache=True, parallel=True)
 def get_octree_level(points, grid_size):
     """Compute nearest octree level based on a desired grid_size."""
