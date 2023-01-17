@@ -1,4 +1,5 @@
 import os
+import math
 import trimesh
 import shapely
 import pymeshfix
@@ -19,7 +20,6 @@ import utils.math_utils as math_utils
 import utils.plot_utils as plot_utils
 import utils.clip_utils as clip_utils
 from utils.interpolation import FastGridInterpolator
-
 
 from labels import Labels
 
@@ -129,6 +129,84 @@ def skeleton_split(tree_cloud, skeleton_graph):
     labels[selection] = True
 
     return labels
+
+
+def generate_lod(tree_stats, resolution=10, crown_steps=1.5):
+    """Function to generate LoD mesh."""
+    
+    # Fit cylinder to stem
+    cyl_radius = tree_stats['DBH']/2
+    stem_center_min = tree_stats['stem_startpoint']
+    stem_center_max = tree_stats['stem_endpoint']
+    crown_mesh = tree_stats['crown_mesh']
+
+    # crown top point (TODO: compare alternatives...)
+    crown_trimesh = o3d_utils.to_trimesh(crown_mesh)
+    ray_origin = np.hstack([stem_center_max[:2], crown_mesh.get_center()[2]])
+    ray_direction = np.array([[0,0,1]]) # TODO: or stem_axis ??
+    crown_center_max = crown_trimesh.ray.intersects_location([ray_origin], ray_direction)[0][0]
+
+    # construct stem rims
+    angles = [2*math.pi*i/float(resolution) for i in range(resolution)]
+    stem_bottom_rim = np.array([
+        np.array([math.cos(theta), math.sin(theta), 0.0]) * cyl_radius + stem_center_min
+        for theta in angles], dtype=float).reshape((-1,3))
+
+    stem_top_rim = np.array([
+        np.array([math.cos(theta), math.sin(theta), 0.0]) * cyl_radius + stem_center_max
+        for theta in angles], dtype=float).reshape((-1,3))
+
+    # construct crown rims
+    crown_rims = np.zeros((0,3))
+    lenght = np.linalg.norm(crown_center_max - stem_center_max) + crown_steps
+    crown_ray_origins = np.linspace(stem_center_max, crown_center_max, int(lenght/crown_steps))[1:]
+    for ray_origin in crown_ray_origins:
+        ray_origin = ray_origin.reshape(1,3)
+        for theta in angles:
+            ray_direction = np.array([[math.cos(theta), math.sin(theta), 0.0]])
+            locations = crown_trimesh.ray.intersects_location(ray_origin, ray_direction)[0]
+            idx = np.argmax(np.linalg.norm(locations - ray_origin, axis=1))
+            crown_rims = np.vstack([crown_rims, locations[idx]])
+
+    vertices = np.vstack([[stem_center_min, crown_center_max],
+                            stem_bottom_rim,
+                            stem_top_rim,
+                            crown_rims])
+
+    # create faces
+    num_slices = len(crown_ray_origins) + 1
+    bottom_fan = np.array([
+        [0, (i+1)%resolution+2, i+2]
+        for i in range(resolution) ], dtype=int)
+
+    top_fan = np.array([
+        [1, i+2+resolution*(num_slices-1), (i+1)%resolution+2+resolution*(num_slices-1)]
+        for i in range(resolution) ], dtype=int)
+
+    rim_fan = np.array([
+        [[2+i, (i+1)%resolution+2, i+resolution+2],
+            [i+resolution+2, (i+1)%resolution+2, (i+1)%resolution+resolution+2]]
+        for i in range(resolution) ], dtype=int)
+    rim_fan = rim_fan.reshape((-1, 3), order="C")
+
+    side_fan = np.array([
+        rim_fan + resolution*i 
+        for i in range(num_slices-1)], dtype=int)
+    side_fan = side_fan.reshape((-1, 3), order="C")
+
+    faces = np.vstack([bottom_fan, top_fan, side_fan])
+
+    # create mesh
+    lod = trimesh.base.Trimesh(vertices, faces).as_open3d
+    lod.paint_uniform_color(tree_colors['stem'])
+    lod.compute_vertex_normals()
+    mesh_colors = np.full((len(lod.vertices),3), tree_colors['foliage'])
+    mesh_colors[0] = tree_colors['stem']
+    mesh_colors[2:resolution*2+2] = tree_colors['stem']
+
+    lod.vertex_colors = o3d.utility.Vector3dVector(mesh_colors)
+
+    return lod
 
 
 # CROWN ANALYSIS
@@ -255,13 +333,13 @@ def project_tree(crown_cloud, stem_cloud):
     plt.show()
 
 
-def crown_analysis(crown_cloud, method, stats, ahn_z=0):
+def crown_analysis(crown_cloud, method, stats):
     """Function to analyse tree crown o3d point cloud."""
 
     # crown analysis
     mesh, volume = crown_to_mesh(crown_cloud, method)
     stats['crown_height'] = crown_height(crown_cloud)
-    stats['crown_baseheight'] = crown_base_height(crown_cloud, ahn_z)
+    stats['crown_baseheight'] = crown_base_height(crown_cloud, stats['stem_startpoint'][2])
     stats['crown_diameter'] = crown_diameter(crown_cloud)
     stats['crown_shape'] = Labels.get_str(crown_shape(crown_cloud))
     stats['crown_volume'] = volume
@@ -283,6 +361,7 @@ def stem_angle(stem_cylinders):
 
 
 def stem_bearing(stem_cylinders):
+    """Function to estimate sten angle bearing"""
     return math_utils.vector_bearing(stem_cylinders[-1,:2] - stem_cylinders[0,:2])
 
 
@@ -293,51 +372,75 @@ def diameter_at_breastheight(stem_cloud, breastheight):
 
     # clip slice
     mask = clip_utils.axis_clip(stem_poits, 2, z-.1, z+.1)
-    slice = stem_poits[mask]
+    stem_slice = stem_poits[mask]
 
     # fit cylinder
-    radius = fit_vertical_cylinder_3D(slice, .04)[2]
+    radius = fit_vertical_cylinder_3D(stem_slice, .04)[2]
 
     return 2*radius
 
 
-def get_stem_location(stem_cloud, trim=1):
+def get_stem_location(stem_cloud, ground_cloud):
     """Function to get stem location based on cylinder fit."""
 
-    # trim and downsample stem
-    stem_pts = np.asarray(stem_cloud.points)
-    stem_min_z = stem_pts[:,2].min()
-    # mask = np.where(stem_pts[:,2] < stem_min_z + trim)[0]
-    # cloud_ = stem_cloud.select_by_index(mask)
-    pts_ = stem_pts[stem_pts[:,2] < stem_min_z + trim]
+    # Fit cylinder to stem
+    stem_points = np.array(stem_cloud.voxel_down_sample(0.04).points)
+    stem_cyl = fit_vertical_cylinder_3D(stem_points, .05)[:3]
+    cyl_center, cyl_axis, cyl_radius = stem_cyl
 
-    # fit cylinder to breast
-    cyl_center, cyl_axis, cyl_radius = fit_vertical_cylinder_3D(pts_, .05)[:3]
-    # cyl_mesh = trimesh.creation.cylinder(radius=cyl_radius,
-    #                     sections=20, 
-    #                     segment=(cyl_center-cyl_axis*trim/2,cyl_center+cyl_axis*trim/2)).as_open3d
+    # stem split intersection
+    stem_center_max = math_utils.line_plane_intersection(
+                        np.array([0,0,stem_cloud.get_max_bound()[2]]),
+                        np.array([0,0,1]),
+                        cyl_center,
+                        cyl_axis)
 
-    stem_location = math_utils.line_plane_intersection(
-                     np.array([0,0,1]),
-                     np.array([0,0,stem_min_z]),
-                     cyl_center,
-                     cyl_axis)[:2]
+    # stem ground intersection
+    ground_mesh = o3d_utils.surface_mesh_creation(ground_cloud)
+    ground_trimesh = o3d_utils.to_trimesh(ground_mesh)
+    ray_direction = [-np.sign(cyl_axis[2]) * cyl_axis]
+    locations, _, _ = ground_trimesh.ray.intersects_location([cyl_center], ray_direction)
+    stem_location = locations[np.argmax(locations[:,2])]
 
-    return stem_location
+    return stem_location, (stem_location, )
 
 
-def stem_analysis(stem_cloud, stats, breastheight=1.3, ahn_z=0):
+def stem_analysis(stem_cloud, ground_cloud, stats, breastheight=1.3):
     """Function to analyse tree crown o3d point cloud."""
 
-    # breast analysis
+    # fit cylinder to stem
+    stem_cloud_voxeld = stem_cloud.voxel_down_sample(0.04)
+    stem_points = np.array(stem_cloud_voxeld.points)
+    stem_cyl = fit_vertical_cylinder_3D(stem_points, .05)[:3]
+    cyl_center, cyl_axis, cyl_radius = stem_cyl
+
+    # stem start point
+    ground_mesh = o3d_utils.surface_mesh_creation(ground_cloud)
+    ground_trimesh = o3d_utils.to_trimesh(ground_mesh)
+    ray_direction = [-np.sign(cyl_axis[2]) * cyl_axis]
+    locations, _, _ = ground_trimesh.ray.intersects_location([cyl_center], ray_direction)
+    stem_start_point = locations[np.argmax(locations[:,2])]
+
+    # stem endpoint
+    stem_endpoint = math_utils.line_plane_intersection(
+                        np.array([0,0,stem_cloud.get_max_bound()[2]]),
+                        np.array([0,0,1]),
+                        cyl_center,
+                        cyl_axis)
+
+    # stem stats
+    stats['stem_startpoint'] = stem_start_point
+    stats['stem_endpoint'] = stem_endpoint
+    stats['stem_height'] = stats['stem_endpoint'][2] - stats['stem_startpoint'][2]
+    stats['stem_angle'] = math_utils.vector_angle(stats['stem_endpoint'] - stats['stem_startpoint'])
+
+    # diameter at breastheight
     dbh = diameter_at_breastheight(stem_cloud, breastheight)
     stats['DBH'] = dbh
     stats['circumference_BH'] = dbh * np.pi
 
     # stem analysis
     cyl_array = fit_cylinders_to_stem(stem_cloud, .25)
-    stats['stem_height'] = stem_height(stem_cloud, ahn_z)
-    stats['stem_angle'] = stem_angle(cyl_array)
     stats['stem_CCI'] = (np.min(cyl_array[:,4]), np.max(cyl_array[:,4]))
     stats['stem_mesh'] = o3d_utils.mesh_from_cylinders(cyl_array, tree_colors['stem'])
 
@@ -406,7 +509,7 @@ def tree_separate(tree_cloud, adTree_exe, filter_leaves=None):
     return stem_cloud, crown_cloud
 
 
-def analyse_tree(tree_cloud, adTree_exe, ahn_tile=None, filter_leaves=None,
+def analyse_tree(tree_cloud, ground_cloud, adTree_exe, filter_leaves=None,
                  crown_model_method='alphashape', show_result=False):
     """Function to analyse o3d point cloud tree."""
 
@@ -436,16 +539,13 @@ def analyse_tree(tree_cloud, adTree_exe, ahn_tile=None, filter_leaves=None,
     print("Crown & Stem Analysis...")
     stem_cloud = tree_cloud.select_by_index(np.where(mask)[0])
     crown_cloud = tree_cloud.select_by_index(np.where(mask)[0], invert=True)
-    tree_stats['rd_coords'] = get_stem_location(stem_cloud, 1)
-    if ahn_tile:
-        fast_z = FastGridInterpolator(ahn_tile['x'], ahn_tile['y'],
-                                    ahn_tile['ground_surface'])
-        tree_ahn_z = fast_z(tree_stats['rd_coords'].reshape(1,2))[0]
-    else:
-        tree_ahn_z = stem_cloud.get_min_bound()[2]
-    tree_stats['ground_level'] = tree_ahn_z
-    tree_stats = stem_analysis(stem_cloud, tree_stats, ahn_z=tree_ahn_z)
-    tree_stats = crown_analysis(crown_cloud, crown_model_method, tree_stats, ahn_z=tree_ahn_z)
+    tree_stats = stem_analysis(stem_cloud, ground_cloud, tree_stats)
+    tree_stats = crown_analysis(crown_cloud, crown_model_method, tree_stats)
+    print("Done.")
+
+    # LoD generation
+    print("LoD generation...")
+    tree_stats['LoD'] = generate_lod(tree_stats)
     print("Done.")
 
     # Show tree

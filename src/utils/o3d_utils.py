@@ -179,6 +179,22 @@ def to_trimesh(mesh):
     return trimesh.base.Trimesh(mesh.vertices, mesh.triangles)
 
 
+def surface_mesh_creation(cloud):
+    """Function to construct surface mesh"""
+
+    ground_cloud = cloud.voxel_down_sample(0.25)
+    cl, ind = ground_cloud.remove_statistical_outlier(nb_neighbors=16,
+                                                        std_ratio=2.0)
+    # o3d_utils.display_inlier_outlier(ground_cloud, ind)
+    ground_cloud = ground_cloud.select_by_index(ind)
+    ground_cloud.estimate_normals()
+
+    surface_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
+        ground_cloud, o3d.utility.DoubleVector([.75]))
+    surface_mesh.compute_vertex_normals()
+    return surface_mesh
+
+
 def mesh_from_cylinders(cyl_array, color=[0.7,0.7,0.7], resolution=15):
     """Function to construct o3d mesh from cylindrical sections."""
     circle_fits = [(rim[:3], rim[3]) for rim in cyl_array]
