@@ -27,7 +27,7 @@ AHN_GROUND = 2
 
 
 def _get_ahn_surface(ahn_las, grid_x, grid_y, si_method, n_neighbors=8,
-                     max_dist=1, power=2., fill_value=np.nan):
+                     max_dist=1.0, power=2., fill_value=np.nan):
     """
     Use maximum-based interpolation or inverse distance weighted interpolation
     (IDW) to generate a surface (grid) from a given AHN cloud.
@@ -105,7 +105,7 @@ def clip_ahn_las_tree(ahn_cloud, las_file, out_folder='', buffer=1, resolution=0
     """
     if type(las_file) == str:
         las_file = pathlib.Path(las_file)
-    tree_code = las_file.name[-17:-4]
+    tree_code = las_utils.get_treecode_from_filename(las_file.name)
 
     # based on input las
     with laspy.lib.open_las(las_file, mode='r') as flas:
@@ -190,9 +190,9 @@ def clip_ahn_las_folder(ahn_cloud, in_folder, out_folder=None, buffer=1,
 
     if resume:
         # Find which files have already been processed.
-        done = set(file.name[-17:-4]
+        done = set(las_utils.get_treecode_from_filename(file.name)
                    for file in pathlib.Path(out_folder).glob('ahn_surf_*.laz'))
-        files = [f for f in files if f.name[-17:-4] not in done]
+        files = [f for f in files if las_utils.get_treecode_from_filename(f.name) not in done]
 
     for file in tqdm(files, unit="file", disable=hide_progress, smoothing=0):
         clip_ahn_las_tree(ahn_cloud, file, out_folder=out_folder,

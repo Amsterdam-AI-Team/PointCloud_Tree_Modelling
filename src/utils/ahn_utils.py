@@ -43,6 +43,10 @@ class AHNReader(ABC):
     def filter_file(self, treecode):
         pass
 
+    @abstractmethod
+    def get_tree_surface(self, treecode):
+        pass
+
     def set_caching(self, state):
         if not hasattr(self, 'caching') or (self.caching is not state):
             self.caching = state
@@ -135,6 +139,17 @@ class NPZReader(AHNReader):
         else:
             return load_ahn_file(
                         os.path.join(self.path, 'ahn_surf_' + treecode + '.npz'))
+
+
+    def get_tree_surface(self, treecode):
+        """Function to get the surface points of a tree."""
+        ahn_tile = self.filter_file(treecode)
+        X, Y = np.meshgrid(ahn_tile['x'], ahn_tile['y'])
+        ahn_points = np.vstack(map(np.ravel, [X,Y,ahn_tile['ground_surface']])).T
+        ahn_points = ahn_points[~np.isnan(ahn_points).any(axis=1)]
+        return ahn_points
+
+
 
 def load_ahn_file(ahn_file):
     """

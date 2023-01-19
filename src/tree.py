@@ -21,6 +21,11 @@ import utils.plot_utils as plot_utils
 import utils.clip_utils as clip_utils
 from utils.interpolation import FastGridInterpolator
 
+import logging
+
+
+logger = logging.getLogger()
+
 from labels import Labels
 
 # class TreeAnaylsis:
@@ -71,7 +76,7 @@ def reconstruct_skeleton(tree_cloud, exe_path):
         os.mkdir(tmp_folder)
 
     try:
-        tree_cloud_sampled = tree_cloud.voxel_down_sample(0.04)
+        tree_cloud_sampled = tree_cloud.voxel_down_sample(0.02)
         o3d.io.write_point_cloud(in_file, tree_cloud_sampled) # write input file
         subprocess.run(
                 [exe_path, in_file, out_file],
@@ -83,9 +88,9 @@ def reconstruct_skeleton(tree_cloud, exe_path):
         graph, vertices, edges = graph_utils.read_ply(out_file)
 
     except subprocess.CalledProcessError as error_msg:
-        print(f"Failed reconstructing tree:\n {error_msg.stderr.decode('utf-8')}")
+        logger.info(f"Failed reconstructing tree:\n {error_msg.stderr.decode('utf-8')}")
     except Exception as error_msg:
-        print(f"Failed:\n {error_msg}")
+        logger.info(f"Failed:\n {error_msg}")
 
     # clean filesystem
     if os.path.exists(in_file):
@@ -367,12 +372,12 @@ def stem_bearing(stem_cylinders):
 
 def diameter_at_breastheight(stem_cloud, breastheight):
     """Function to estimate diameter at breastheight."""
-    stem_poits = np.asarray(stem_cloud.points)
-    z = stem_poits[:,2].min() + breastheight
+    stem_points = np.asarray(stem_cloud.points)
+    z = stem_points[:,2].min() + breastheight
 
     # clip slice
-    mask = clip_utils.axis_clip(stem_poits, 2, z-.1, z+.1)
-    stem_slice = stem_poits[mask]
+    mask = clip_utils.axis_clip(stem_points, 2, z-.1, z+.1)
+    stem_slice = stem_points[mask]
 
     # fit cylinder
     radius = fit_vertical_cylinder_3D(stem_slice, .04)[2]
@@ -487,21 +492,21 @@ def tree_separate(tree_cloud, adTree_exe, filter_leaves=None):
     labels = np.ones(len(tree_cloud.points), dtype=int)
     wood_cloud = tree_cloud
     if filter_leaves:
-        print(f"Leaf-wood classification using `{filter_leaves}` method...")
+        logger.info(f"Leaf-wood classification using `{filter_leaves}` method...")
         labels = leafwood_classificiation(tree_cloud, method=filter_leaves)
         wood_cloud = tree_cloud.select_by_index(np.where(labels==Labels.WOOD)[0])
-        print(f"Done. {np.sum(labels==Labels.WOOD)}/{len(labels)} points wood.")
+        logger.info(f"Done. {np.sum(labels==Labels.WOOD)}/{len(labels)} points wood.")
 
     # 2. Skeleton reconstruction
-    print("Reconstructing tree skeleton...")
+    logger.info("Reconstructing tree skeleton...")
     skeleton = reconstruct_skeleton(wood_cloud, adTree_exe)
-    print(f"Done. Skeleton constructed containing {len(skeleton['vertices'])} nodes")
+    logger.info(f"Done. Skeleton constructed containing {len(skeleton['vertices'])} nodes")
 
     # 3. Stem-crow splitting
-    print("Splitting stem form crown...")
+    logger.info("Splitting stem form crown...")
     mask = skeleton_split(tree_cloud, skeleton['graph'])
     labels[mask] = Labels.STEM
-    print(f"Done. {np.sum(mask)}/{len(labels)} points labeled as stem.")
+    logger.info(f"Done. {np.sum(mask)}/{len(labels)} points labeled as stem.")
 
     stem_cloud = tree_cloud.select_by_index(np.where(mask)[0])
     crown_cloud = tree_cloud.select_by_index(np.where(mask)[0], invert=True)
@@ -509,7 +514,7 @@ def tree_separate(tree_cloud, adTree_exe, filter_leaves=None):
     return stem_cloud, crown_cloud
 
 
-def analyse_tree(tree_cloud, ground_cloud, adTree_exe, filter_leaves=None,
+def process_tree(tree_cloud, ground_cloud, adTree_exe, filter_leaves=None,
                  crown_model_method='alphashape', show_result=False):
     """Function to analyse o3d point cloud tree."""
 
@@ -519,34 +524,34 @@ def analyse_tree(tree_cloud, ground_cloud, adTree_exe, filter_leaves=None,
     labels = np.ones(len(tree_cloud.points), dtype=int)
     wood_cloud = tree_cloud
     if filter_leaves:
-        print(f"Leaf-wood classification using `{filter_leaves}` method...")
+        logger.info(f"Leaf-wood classification using `{filter_leaves}` method...")
         labels = leafwood_classificiation(tree_cloud, method=filter_leaves)
         wood_cloud = tree_cloud.select_by_index(np.where(labels==Labels.WOOD)[0])
-        print(f"Done. {np.sum(labels==Labels.WOOD)}/{len(labels)} points wood.")
+        logger.info(f"Done. {np.sum(labels==Labels.WOOD)}/{len(labels)} points wood.")
 
     # 2. Skeleton reconstruction
-    print("Reconstructing tree skeleton...")
+    logger.info("Reconstructing tree skeleton...")
     skeleton = reconstruct_skeleton(wood_cloud, adTree_exe)
-    print(f"Done. Skeleton constructed containing {len(skeleton['vertices'])} nodes")
+    logger.info(f"Done. Skeleton constructed containing {len(skeleton['vertices'])} nodes")
 
     # 3. Stem-crow splitting
-    print("Splitting stem form crown...")
+    logger.info("Splitting stem form crown...")
     mask = skeleton_split(tree_cloud, skeleton['graph'])
     labels[mask] = Labels.STEM
-    print(f"Done. {np.sum(mask)}/{len(labels)} points labeled as stem.")
+    logger.info(f"Done. {np.sum(mask)}/{len(labels)} points labeled as stem.")
 
     # 4. Analysis
-    print("Crown & Stem Analysis...")
+    logger.info("Crown & Stem Analysis...")
     stem_cloud = tree_cloud.select_by_index(np.where(mask)[0])
     crown_cloud = tree_cloud.select_by_index(np.where(mask)[0], invert=True)
     tree_stats = stem_analysis(stem_cloud, ground_cloud, tree_stats)
     tree_stats = crown_analysis(crown_cloud, crown_model_method, tree_stats)
-    print("Done.")
+    logger.info("Done.")
 
     # LoD generation
-    print("LoD generation...")
+    logger.info("LoD generation...")
     tree_stats['LoD'] = generate_lod(tree_stats)
-    print("Done.")
+    logger.info("Done.")
 
     # Show tree
     if show_result:

@@ -27,7 +27,7 @@ def statistics(pcd):
     print(f"Point cloud of {n} points, ({x}x{y}x{z}), and {density} point density.")
 
 
-def read_las(las_file, output_stats=True):
+def read_las(las_file, output_stats=False):
     """Read a las file and return the o3d.geometry.PointCloud object."""
     las = laspy.read(las_file)
     pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(las.xyz))

@@ -7,6 +7,7 @@ import re
 import os
 import laspy
 import open3d as o3d
+from tqdm import tqdm
 from shapely.geometry import Polygon
 
 
@@ -17,6 +18,7 @@ def to_o3d(las):
     colors = colors / colors.max()
     pcd.colors = o3d.utility.Vector3dVector(colors)
     return pcd
+
 
 def print_statistics(las):
     """Provides statistics on las file."""
@@ -39,6 +41,12 @@ def print_statistics(las):
     print('y:', y_width,'m',y_range)
     print('z:', z_width,'m',z_range)
     print('')
+
+
+def get_treecode_from_filename(filename):
+    """Extract the tile code from a file name."""
+    return re.match(r'.*(\d{6}_\d{6}).*', filename)[1]
+
 
 def get_tilecode_from_filename(filename):
     """Extract the tile code from a file name."""
@@ -150,6 +158,46 @@ def get_bbox_from_las_folder(folder_path, padding=0):
 def read_las(las_file):
     """Read a las file and return the las object."""
     return laspy.read(las_file)
+
+
+def merge_las_folder(in_folder):
+    """Function to merge lasfiles"""
+
+    outfile = in_folder + 'merged.las'
+    in_folder = pathlib.Path(in_folder)
+
+    file_types = ('.LAS', '.las', '.LAZ', '.laz')
+    files = [f for f in in_folder.glob('*')
+                if f.name.endswith(file_types)]
+
+    files = [f for f in files if f != outfile]
+
+    files_tqdm = tqdm(files, unit="file",
+                        disable=False, smoothing=0)
+
+    points = np.zeros((0,3))
+    classification = np.array([], dtype="uint8")
+    for in_file in files_tqdm:
+        in_las = read_las(in_file)
+        points = np.vstack([points, in_las.xyz])
+        classification = np.hstack([classification, in_las.classification])
+
+    # 1. Create a new header
+    header = laspy.LasHeader(point_format=3, version="1.2")
+    header.add_extra_dim(laspy.ExtraBytesParams(name="classification", type="uint8"))
+    header.offsets = np.min(points, axis=0)
+    header.scales = np.array([0.1, 0.1, 0.1])
+
+    # 2. Create a Las
+    las = laspy.LasData(header)
+    las.x = points[:, 0]
+    las.y = points[:, 1]
+    las.z = points[:, 2]
+    las.classification = classification
+
+    las.write(outfile)
+
+    return las
 
 
 def label_and_save_las(las, labels, outfile):
