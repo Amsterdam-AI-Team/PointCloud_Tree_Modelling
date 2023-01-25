@@ -6,6 +6,8 @@
 
 import os
 import math
+import string
+import random
 import trimesh
 import shapely
 import pymeshfix
@@ -72,13 +74,16 @@ def leafwood_classificiation(tree_cloud, method):
     return labels
 
 
-def reconstruct_skeleton(tree_cloud, exe_path):
+def reconstruct_skeleton(tree_cloud, exe_path, filename=''):
     """Function to reconstruct tree skeleton from o3d point cloud using adTree."""
+
+    if len(filename) == '':
+        filename = ''.join(random.choice(string.ascii_letters) for i in range(8))
 
     # create input file system
     tmp_folder = './tmp'
-    in_file = os.path.join(tmp_folder, 'tree.xyz')
-    out_file = os.path.join(tmp_folder, 'tree_skeleton.ply')
+    in_file = os.path.join(tmp_folder, filename + '.xyz')
+    out_file = os.path.join(tmp_folder, filename + '_skeleton.ply')
     if not os.path.exists(tmp_folder):
         os.mkdir(tmp_folder)
 
@@ -104,8 +109,6 @@ def reconstruct_skeleton(tree_cloud, exe_path):
         os.remove(in_file)
     if os.path.exists(out_file):
         os.remove(out_file)
-    if os.path.isdir(tmp_folder):
-        os.rmdir(tmp_folder)
 
     skeleton = {
         'graph': graph,
@@ -118,29 +121,33 @@ def reconstruct_skeleton(tree_cloud, exe_path):
 
 def skeleton_split(tree_cloud, skeleton_graph):
     """Function to split the stem from the crown using the reconstructed tree skeleton."""
+    try:
+        # get start node and retrieve path
+        z_values = nx.get_node_attributes(skeleton_graph, 'z')
+        start_node = min(z_values, key=z_values.get)
+        path = graph_utils.path_till_split(skeleton_graph, start_node)
+        skeleton_pts = np.array([list(skeleton_graph.nodes[node].values()) for node in path])
 
-    # get start node and retrieve path
-    z_values = nx.get_node_attributes(skeleton_graph, 'z')
-    start_node = min(z_values, key=z_values.get)
-    path = graph_utils.path_till_split(skeleton_graph, start_node)
-    skeleton_pts = np.array([list(skeleton_graph.nodes[node].values()) for node in path])
+        # Filter cloud for stem points
+        tree_points = np.array(tree_cloud.points)
+        labels = np.zeros(len(tree_points), dtype=bool)
+        mask_idx = np.where(tree_points[:,2] < skeleton_pts[:,2].max())[0]
+        
+        # TODO Filter tree points
+        tree = KDTree(tree_points[mask_idx])
+        selection = set()
+        num_ = int(np.linalg.norm(skeleton_pts[1]-skeleton_pts[0]) / 0.05)
+        skeleton_pts = np.linspace(start=skeleton_pts[0], stop=skeleton_pts[-1], num=num_)
+        for result in tree.query_ball_point(skeleton_pts, .75):
+            selection.update(result)
+        selection = mask_idx[list(selection)]
+        labels[selection] = True
 
-    # Filter cloud for stem points
-    tree_points = np.array(tree_cloud.points)
-    labels = np.zeros(len(tree_points), dtype=bool)
-    mask_idx = np.where(tree_points[:,2] < skeleton_pts[:,2].max())[0]
-    
-    # TODO Filter tree points
-    tree = KDTree(tree_points[mask_idx])
-    selection = set()
-    num_ = int(np.linalg.norm(skeleton_pts[1]-skeleton_pts[0]) / 0.05)
-    skeleton_pts = np.linspace(start=skeleton_pts[0], stop=skeleton_pts[-1], num=num_)
-    for result in tree.query_ball_point(skeleton_pts, .75):
-        selection.update(result)
-    selection = mask_idx[list(selection)]
-    labels[selection] = True
+        return labels
 
-    return labels
+    except Exception as e:
+        logger.error('Error at %s', 'tree_utils error', exc_info=e)
+        return None
 
 
 def tree_separate(tree_cloud, adTree_exe, filter_leaves=None):
@@ -170,84 +177,6 @@ def tree_separate(tree_cloud, adTree_exe, filter_leaves=None):
     crown_cloud = tree_cloud.select_by_index(np.where(mask)[0], invert=True)
 
     return stem_cloud, crown_cloud
-
-
-def generate_lod(tree_data, resolution=10, crown_steps=1.5):
-    """Function to generate LoD mesh."""
-    
-    # Fit cylinder to stem
-    cyl_radius = tree_data['DBH']/2
-    stem_center_min = tree_data['stem_startpoint']
-    stem_center_max = tree_data['stem_endpoint']
-    crown_mesh = tree_data['crown_mesh']
-
-    # crown top point (TODO: compare alternatives...)
-    crown_trimesh = o3d_utils.to_trimesh(crown_mesh)
-    ray_origin = np.hstack([stem_center_max[:2], crown_mesh.get_center()[2]])
-    ray_direction = np.array([[0,0,1]]) # TODO: or stem_axis ??
-    crown_center_max = crown_trimesh.ray.intersects_location([ray_origin], ray_direction)[0][0]
-
-    # construct stem rims
-    angles = [2*math.pi*i/float(resolution) for i in range(resolution)]
-    stem_bottom_rim = np.array([
-        np.array([math.cos(theta), math.sin(theta), 0.0]) * cyl_radius + stem_center_min
-        for theta in angles], dtype=float).reshape((-1,3))
-
-    stem_top_rim = np.array([
-        np.array([math.cos(theta), math.sin(theta), 0.0]) * cyl_radius + stem_center_max
-        for theta in angles], dtype=float).reshape((-1,3))
-
-    # construct crown rims
-    crown_rims = np.zeros((0,3))
-    lenght = np.linalg.norm(crown_center_max - stem_center_max) + crown_steps
-    crown_ray_origins = np.linspace(stem_center_max, crown_center_max, int(lenght/crown_steps))[1:]
-    for ray_origin in crown_ray_origins:
-        ray_origin = ray_origin.reshape(1,3)
-        for theta in angles:
-            ray_direction = np.array([[math.cos(theta), math.sin(theta), 0.0]])
-            locations = crown_trimesh.ray.intersects_location(ray_origin, ray_direction)[0]
-            idx = np.argmax(np.linalg.norm(locations - ray_origin, axis=1))
-            crown_rims = np.vstack([crown_rims, locations[idx]])
-
-    vertices = np.vstack([[stem_center_min, crown_center_max],
-                            stem_bottom_rim,
-                            stem_top_rim,
-                            crown_rims])
-
-    # create faces
-    num_slices = len(crown_ray_origins) + 1
-    bottom_fan = np.array([
-        [0, (i+1)%resolution+2, i+2]
-        for i in range(resolution) ], dtype=int)
-
-    top_fan = np.array([
-        [1, i+2+resolution*(num_slices-1), (i+1)%resolution+2+resolution*(num_slices-1)]
-        for i in range(resolution) ], dtype=int)
-
-    rim_fan = np.array([
-        [[2+i, (i+1)%resolution+2, i+resolution+2],
-            [i+resolution+2, (i+1)%resolution+2, (i+1)%resolution+resolution+2]]
-        for i in range(resolution) ], dtype=int)
-    rim_fan = rim_fan.reshape((-1, 3), order="C")
-
-    side_fan = np.array([
-        rim_fan + resolution*i 
-        for i in range(num_slices-1)], dtype=int)
-    side_fan = side_fan.reshape((-1, 3), order="C")
-
-    faces = np.vstack([bottom_fan, top_fan, side_fan])
-
-    # create mesh
-    lod = trimesh.base.Trimesh(vertices, faces).as_open3d
-    lod.paint_uniform_color(tree_colors['stem'])
-    lod.compute_vertex_normals()
-    mesh_colors = np.full((len(lod.vertices),3), tree_colors['foliage'])
-    mesh_colors[0] = tree_colors['stem']
-    mesh_colors[2:resolution*2+2] = tree_colors['stem']
-
-    lod.vertex_colors = o3d.utility.Vector3dVector(mesh_colors)
-
-    return lod
 
 
 # ------------------
@@ -466,8 +395,10 @@ def diameter_at_breastheight(stem_cloud):
         z = stem_points[:,2].min() + breastheight
 
         # clip slice
-        mask = clip_utils.axis_clip(stem_points, 2, z-.1, z+.1)
+        mask = clip_utils.axis_clip(stem_points, 2, z-.15, z+.15)
         stem_slice = stem_points[mask]
+        if len(stem_slice) < 20:
+            return None
 
         # fit cylinder
         radius = fit_vertical_cylinder_3D(stem_slice, .04)[2]
@@ -484,8 +415,7 @@ def get_stem_endpoints(stem_cloud, ground_cloud):
         # fit cylinder to stem
         stem_cloud_voxeld = stem_cloud.voxel_down_sample(0.04)
         stem_points = np.array(stem_cloud_voxeld.points)
-        stem_cyl = fit_vertical_cylinder_3D(stem_points, .05)[:3]
-        cyl_center, cyl_axis, cyl_radius = stem_cyl
+        cyl_center, cyl_axis, cyl_radius = fit_vertical_cylinder_3D(stem_points, .05)[:3]
 
         # stem start point
         ground_mesh = o3d_utils.surface_mesh_creation(ground_cloud)
@@ -504,7 +434,7 @@ def get_stem_endpoints(stem_cloud, ground_cloud):
         return start_point, end_point
     except Exception as e:
         logger.error('Error at %s', 'tree_utils error', exc_info=e)
-        return None
+        return stem_cloud.get_min_bound(), stem_cloud.get_max_bound()
 
 
 def stem_analysis(stem_cloud, ground_cloud, stats):
@@ -601,7 +531,7 @@ def process_tree(tree_cloud, ground_cloud, adTree_exe, filter_leaves=None):
     tree_data['stem_height'] = tree_data['crown_basepoint'][2] - tree_data['stem_basepoint'][2]
     tree_data['stem_angle'] = math_utils.vector_angle(tree_data['crown_basepoint'] - tree_data['stem_basepoint'])
     tree_data['DBH'] = diameter_at_breastheight(stem_cloud)
-    tree_data['CBH'] = tree_data['DBH'] * np.pi
+    tree_data['CBH'] = tree_data['DBH'] * np.pi if tree_data['DBH'] is not None else None
     tree_data['stem_mesh'] = stem_to_mesh(stem_cloud)
     logger.info("Done.")
 
