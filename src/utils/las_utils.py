@@ -155,6 +155,24 @@ def get_bbox_from_las_folder(folder_path, padding=0):
     return ((x_min-padding, y_max+padding), (x_max+padding, y_min-padding))
 
 
+def ahn_bbox_las_folder(in_folder):
+    """Function retrieve bbox from all files in folder"""
+    bboxes = {}
+    for las_file in in_folder.glob('*.LAZ'):
+        with laspy.open(las_file, mode='r') as f:
+            header = f.header
+            bbox = (header.x_min,header.x_max,header.y_min,header.y_max)
+            bboxes[las_file.name] = bbox
+
+    return bboxes
+
+
+def get_bbox_treecode(treecode, padding=20):
+    """Function to retrieve bbox centered around treecode."""
+    x, y = np.asarray(treecode.split('_'), dtype=int)
+    return (x - padding, x + padding, y - padding, y + padding)
+
+
 def read_las(las_file):
     """Read a las file and return the las object."""
     return laspy.read(las_file)

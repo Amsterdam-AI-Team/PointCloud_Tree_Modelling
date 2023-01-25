@@ -4,6 +4,7 @@
 
 import numpy as np
 import pandas as pd
+import open3d as o3d
 import copy
 import warnings
 import os
@@ -45,6 +46,10 @@ class AHNReader(ABC):
 
     @abstractmethod
     def get_tree_surface(self, treecode):
+        pass
+
+    @abstractmethod
+    def get_surface(self, treecode):
         pass
 
     def set_caching(self, state):
@@ -104,6 +109,11 @@ class AHNReader(ABC):
             ahn_tile['x'], ahn_tile['y'], ahn_tile[surface])
         return fast_z(points)
 
+    def tree_surface_z(self, treecode):
+        treecode_split = treecode.split('_')
+        points = np.array([[int(treecode_split[0]), int(treecode_split[1])]])
+        return self.interpolate(treecode, points)[0]
+
 
 class NPZReader(AHNReader):
     """
@@ -148,6 +158,16 @@ class NPZReader(AHNReader):
         ahn_points = np.vstack(map(np.ravel, [X,Y,ahn_tile['ground_surface']])).T
         ahn_points = ahn_points[~np.isnan(ahn_points).any(axis=1)]
         return ahn_points
+
+    
+    def get_surface(self, treecode):
+        """Function to get the surface points of a tree."""
+        ahn_tile = self.filter_file(treecode)
+        X, Y = np.meshgrid(ahn_tile['x'], ahn_tile['y'])
+        ahn_points = np.vstack(map(np.ravel, [X,Y,ahn_tile['ground_surface']])).T
+        ahn_points = ahn_points[~np.isnan(ahn_points).any(axis=1)]
+        cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(ahn_points))
+        return cloud
 
 
 

@@ -220,3 +220,11 @@ def line_plane_intersection(plane_point, plane_normal, line_point, line_direcito
     intersection_point = w + si * line_direciton + plane_point
 
     return intersection_point
+
+
+def bbox_in_bbox(bbox_a, bbox_b):
+    """Function to test if bbox_a in bbox_b"""
+    return bbox_b[0] <= bbox_a[0] and bbox_b[2] <= bbox_a[2] and \
+        bbox_b[1] >= bbox_a[1] and bbox_b[3] >= bbox_a[3]
+
+

@@ -142,6 +142,65 @@ def clip_ahn_las_tree(ahn_cloud, las_file, out_folder='', buffer=1, resolution=0
     return filename
 
 
+def clip_ahn_treecodes(ahn_cloud, treecodes, out_folder='', buffer=20, resolution=0.1):
+    """
+    Clip a tile from the AHN cloud to match the dimensions of a given
+    CycloMedia LAS tile, and save the result using the same naming convention.
+
+    Parameters
+    ----------
+    ahn_cloud : laspy point cloud
+        The full AHN point cloud. This is assumed to include the full area of
+        the given CycloMedia tile.
+
+    bbox : list of int
+        The bbox is (xmin, xmax, ymin, ymax).
+
+    out_folder : str, optional
+        Output folder to which the clipped file should be saved. Defaults to
+        the current folder.
+
+    buffer : int, optional (default: 1)
+        Buffer around the CycloMedia tile (in m) to include, used for further
+        processing (e.g. interpolation).
+    """
+
+    # filter ahn_gound
+    mask = np.where(ahn_cloud.classification == AHN_GROUND)[0]
+    ahn_x = ahn_cloud.x[mask]
+    ahn_y = ahn_cloud.y[mask]
+
+    for treecode in tqdm(treecodes):
+        x_min, x_max, y_min, y_max = las_utils.get_bbox_treecode(treecode, buffer)
+
+        x_min, x_max, y_min, y_max = las_utils.get_bbox_treecode(treecode, buffer)
+
+        clip_idx = np.where((x_min <= ahn_x) & (ahn_x <= x_max)
+                            & (y_min <= ahn_y) & (ahn_y <= y_max))[0]
+
+        ahn_file = laspy.LasData(ahn_cloud.header)
+        ahn_file.points = ahn_cloud.points[mask[clip_idx]]
+
+        if out_folder != '':
+            pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
+        ahn_file.write(os.path.join(out_folder, 'ahn_surf_' + treecode + '.laz'))
+
+        # Create a grid with 0.1m resolution
+        grid_y, grid_x = np.mgrid[y_max-resolution/2:y_min:-resolution,
+                                x_min+resolution/2:x_max:resolution]
+
+        # Methods for generating surfaces (grids)
+        ground_surface = _get_ahn_surface(ahn_file, grid_x, grid_y, 'idw')
+
+        filename = os.path.join(out_folder, 'ahn_surf_' + treecode + '.npz')
+        np.savez_compressed(filename,
+                            x=grid_x[0, :],
+                            y=grid_y[:, 0],
+                            ground=ground_surface)
+    
+    return treecodes
+
+
 def clip_ahn_las_folder(ahn_cloud, in_folder, out_folder=None, buffer=1,
                         resume=False, hide_progress=False):
     """

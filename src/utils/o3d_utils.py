@@ -33,7 +33,8 @@ def read_las(las_file, output_stats=False):
     pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(las.xyz))
     colors = np.vstack([las.red,las.green,las.blue]).T
     colors -= colors.min()
-    colors = colors / colors.max()
+    if colors.max() > 0:
+        colors = colors / colors.max()
     pcd.colors = o3d.utility.Vector3dVector(colors)
 
     if output_stats:

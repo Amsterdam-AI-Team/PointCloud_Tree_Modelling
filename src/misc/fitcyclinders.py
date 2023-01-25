@@ -1,7 +1,9 @@
 # 
 # Fit cylinders - Library (Python)
 # 
-
+import warnings
+import open3d as o3d
+import trimesh
 import numpy as np
 import utils.math_utils as math_utils
 from scipy.optimize import leastsq
@@ -35,10 +37,12 @@ def fit_vertical_cylinder_3D(xyz, th):
         p = [0, 0, 0, 0, max(np.abs(y).max(), np.abs(x).max())]
 
         # fit
-        fitfunc = lambda p, x, y, z: (- np.cos(p[3])*(p[0] - x) - z*np.cos(p[2])*np.sin(p[3]) - np.sin(p[2])*np.sin(p[3])*(p[1] - y))**2 + (z*np.sin(p[2]) - np.cos(p[2])*(p[1] - y))**2 #fit function
-        errfunc = lambda p, x, y, z: fitfunc(p, x, y, z) - p[4]**2 #error function 
-        est_p = leastsq(errfunc, p, args=(x, y, z), maxfev=1000)[0]
-        inliers = np.where(errfunc(est_p,x,y,z)<th)[0]
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            fitfunc = lambda p, x, y, z: (- np.cos(p[3])*(p[0] - x) - z*np.cos(p[2])*np.sin(p[3]) - np.sin(p[2])*np.sin(p[3])*(p[1] - y))**2 + (z*np.sin(p[2]) - np.cos(p[2])*(p[1] - y))**2 #fit function
+            errfunc = lambda p, x, y, z: fitfunc(p, x, y, z) - p[4]**2 #error function 
+            est_p = leastsq(errfunc, p, args=(x, y, z), maxfev=1000)[0]
+            inliers = np.where(errfunc(est_p,x,y,z)<th)[0]
         
         # convert
         center = np.array([est_p[0],est_p[1],0]) + xyz_mean
@@ -54,6 +58,7 @@ def fit_vertical_cylinder_3D(xyz, th):
         CCI = math_utils.circumferential_completeness_index([est_p[0], est_p[1]], radius, P_xy)
         
         # visualize
+        # voxel_cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(xyz))
         # mesh = trimesh.creation.cylinder(radius=radius,
         #                  sections=20, 
         #                  segment=(center+axis*z.min(),center+axis*z.max())).as_open3d
