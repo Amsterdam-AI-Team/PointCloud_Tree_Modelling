@@ -1,13 +1,16 @@
-#### ------------ ####
-# 
-# Code Adapted from:
-# https://github.com/PyMesh/PyMesh
-#
-#### ------------ ####
+# Tree_PointCloud_Processing by Amsterdam Intelligence, GPL-3.0 license
+
+"""
+Quaternion - Class (Python)
+
+The class is adapted from:
+https://github.com/PyMesh/PyMesh
+"""
 
 import numpy as np
+from math import sin,cos,sqrt
 from numpy.linalg import norm, svd
-from math import pi,sin,cos,atan2,sqrt
+
 
 class Quaternion:
     """ This class implements quaternion used for 3D rotations.

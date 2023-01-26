@@ -1,19 +1,24 @@
-# Urban_PointCloud_Processing by Amsterdam Intelligence, GPL-3.0 license
+# Tree_PointCloud_Processing by Amsterdam Intelligence, GPL-3.0 license
 
 """
+AHN pre-processing methods - Module (Python)
+
+The module is adapted from:
+https://github.com/Amsterdam-AI-Team/Urban_PointCloud_Processing
+
 This module provides methods to pre-process AHN data. In particular, starting
 from an AHN point cloud, there are methods to clip specific tiles from this
 point cloud, and further methods to extract ground and building surfaces from
 each tile that can be used for automatic labelling of street-level pointclouds.
 
-For an example, see notebooks/1.AHN_preprocessing.ipynb
+For an example, see notebooks/AHN Preprocessing.ipynb
 """
 
-import numpy as np
 import os
-import pathlib
+
 import laspy
-import re
+import pathlib
+import numpy as np
 from tqdm import tqdm
 
 import utils.las_utils as las_utils
@@ -171,9 +176,9 @@ def clip_ahn_treecodes(ahn_cloud, treecodes, out_folder='', buffer=20, resolutio
     ahn_y = ahn_cloud.y[mask]
 
     for treecode in tqdm(treecodes):
-        x_min, x_max, y_min, y_max = las_utils.get_bbox_treecode(treecode, buffer)
+        x_min, x_max, y_min, y_max = las_utils.get_bbox_from_tree_code(treecode, buffer)
 
-        x_min, x_max, y_min, y_max = las_utils.get_bbox_treecode(treecode, buffer)
+        x_min, x_max, y_min, y_max = las_utils.get_bbox_from_tree_code(treecode, buffer)
 
         clip_idx = np.where((x_min <= ahn_x) & (ahn_x <= x_max)
                             & (y_min <= ahn_y) & (ahn_y <= y_max))[0]

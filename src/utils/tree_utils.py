@@ -1,43 +1,41 @@
-# 
-# tree utils - Library (Python)
-# 
-# Copyright (c) 2023 Project AI
-# 
+# Tree_PointCloud_Processing by Amsterdam Intelligence, GPL-3.0 license
 
-import os
-import math
-import string
-import random
+"""
+Point cloud tree processing methods - Module (Python)
+
+This module provides methods to process point clouds of trees.
+In particular, methods to reconstruct the skeleton, analyse features
+like stem and crown dimensions.
+
+For an example,
+- see notebooks/Reconstruction.ipynb
+- see notebooks/Stem Analysis.ipynb
+- see notebooks/Crown Analysis.ipynb
+"""
+
+import os, math, string, random, logging, subprocess
+
 import trimesh
-import shapely
 import pymeshfix
-import subprocess
 import numpy as np
 import open3d as o3d
 import networkx as nx
-import matplotlib.pyplot as plt
 from scipy.spatial import KDTree
-from descartes import PolygonPatch
 from alphashape import alphashape
 
-import utils.o3d_utils as o3d_utils
-import utils.graph_utils as graph_utils
-import utils.math_utils as math_utils
-import utils.plot_utils as plot_utils
-import utils.clip_utils as clip_utils
+from utils import (
+      clip_utils,
+      graph_utils,
+      math_utils,
+      o3d_utils
+  )
+
+from labels import Labels
 from misc.smallestenclosingcircle import make_circle
 from misc.fitcyclinders import fit_cylinders_to_stem, fit_vertical_cylinder_3D
 
-import logging
 
 logger = logging.getLogger()
-
-from labels import Labels
-
-# class TreeAnaylsis:
-#     """
-#     Convenience class for point cloud tree analysis.
-#     """
 
 breastheight = 1.3
 tree_colors = {
@@ -287,46 +285,14 @@ def crown_height(crown_cloud):
         return None
 
 
-def crown_base_height(crown_cloud, ahn_z):
+def crown_base_height(crown_cloud, ground_level=0):
     """Function to get base height of tree."""
     try:
-        height = crown_cloud.get_min_bound()[2] - ahn_z
+        height = crown_cloud.get_min_bound()[2] - ground_level
         return height
     except Exception as e:
         logger.error('Error at %s', 'tree_utils error', exc_info=e)
         return None
-
-
-def project_tree(crown_cloud, stem_cloud):
-    """TODO"""
-
-    # Stem shape
-    pts = o3d_utils.project(stem_cloud, 2, 0.02)
-    stem_alphashape = alphashape.alphashape(pts, 0.5)
-    stem_alphashape = stem_alphashape.buffer(0.01)
-    tree_center = np.hstack(stem_alphashape.centroid.coords)
-
-    # Crown shape
-    pts = o3d_utils.project(crown_cloud, 2, 0.3)
-    crown_alphashape = alphashape.alphashape(pts, 2)
-    crown_alphashape = crown_alphashape.buffer(0.1)
-
-    # Center
-    pts_shifted = pts-[tree_center]
-    stem_alphashape = shapely.affinity.translate(stem_alphashape, *(-1 * tree_center))
-    crown_alphashape = shapely.affinity.translate(crown_alphashape, *(-1 * tree_center))
-
-    # Initialize plot
-    _, axes = plt.subplots()
-    axes.plot(0, marker='x', c='k', markersize=5)
-    axes.add_patch(PolygonPatch(crown_alphashape, alpha=.15, color='green', label='Crown'))
-    axes.add_patch(PolygonPatch(stem_alphashape, alpha=.8, color='brown', label='Stem'))
-    lim = np.max(np.abs(pts_shifted))
-    axes.set_xlim(-lim-.5,lim+.5)
-    axes.set_ylim(-lim-.5,lim+.5)
-    axes.legend()
-    axes.set_title('Tree Projection')
-    plt.show()
 
 
 def crown_analysis(crown_cloud, method):
@@ -348,22 +314,21 @@ def crown_analysis(crown_cloud, method):
 # -----------------
 # - Stem Analysis -
 # -----------------
-
-# TODO: aanpassen
 def stem_to_mesh(stem_cloud):
     """Function to covert stem point cloud to mesh."""
     try:
         cyl_array = fit_cylinders_to_stem(stem_cloud, .3)
-        return o3d_utils.mesh_from_cylinders(cyl_array, tree_colors['stem'])
+        mesh = o3d_utils.mesh_from_cylinders(cyl_array, tree_colors['stem'])
+        return mesh
     except Exception as e:
         logger.error('Error at %s', 'tree_utils error', exc_info=e)
         return None
 
 
-def stem_height(stem_cloud, ahn_z):
+def stem_height(stem_cloud, ground_level=0):
     """Function to get the stem height."""
     try:
-        height = stem_cloud.get_max_bound()[2] - ahn_z
+        height = stem_cloud.get_max_bound()[2] - ground_level
         return height
     except Exception as e:
         logger.error('Error at %s', 'tree_utils error', exc_info=e)
@@ -388,11 +353,11 @@ def stem_bearing(stem_cylinders):
         return None
 
 
-def diameter_at_breastheight(stem_cloud):
+def diameter_at_breastheight(stem_cloud, ground_level=0):
     """Function to estimate diameter at breastheight."""
     try:
         stem_points = np.asarray(stem_cloud.points)
-        z = stem_points[:,2].min() + breastheight
+        z = ground_level + breastheight
 
         # clip slice
         mask = clip_utils.axis_clip(stem_points, 2, z-.15, z+.15)
@@ -439,15 +404,14 @@ def get_stem_endpoints(stem_cloud, ground_cloud):
 
 def stem_analysis(stem_cloud, ground_cloud, stats):
     """Function to analyse tree crown o3d point cloud."""
-
-    
+ 
     # stem stats
-    stats['stem_startpoint'], stats['stem_endpoint'] = get_stem_endpoints(stem_cloud, ground_cloud)
-    stats['stem_height'] = stats['stem_endpoint'][2] - stats['stem_startpoint'][2]
-    stats['stem_angle'] = math_utils.vector_angle(stats['stem_endpoint'] - stats['stem_startpoint'])
+    stats['stem_basepoint'], stats['crown_basepoint'] = get_stem_endpoints(stem_cloud, ground_cloud)
+    stats['stem_height'] = stats['crown_basepoint'][2] - stats['stem_basepoint'][2]
+    stats['stem_angle'] = math_utils.vector_angle(stats['crown_basepoint'] - stats['stem_basepoint'])
 
     # diameter at breastheight
-    dbh = diameter_at_breastheight(stem_cloud)
+    dbh = diameter_at_breastheight(stem_cloud, stats['stem_basepoint'][2])
     stats['DBH'] = dbh
     stats['circumference_BH'] = dbh * np.pi
 
@@ -530,7 +494,7 @@ def process_tree(tree_cloud, ground_cloud, adTree_exe, filter_leaves=None):
     tree_data['stem_basepoint'], tree_data['crown_basepoint'] = get_stem_endpoints(stem_cloud, ground_cloud)
     tree_data['stem_height'] = tree_data['crown_basepoint'][2] - tree_data['stem_basepoint'][2]
     tree_data['stem_angle'] = math_utils.vector_angle(tree_data['crown_basepoint'] - tree_data['stem_basepoint'])
-    tree_data['DBH'] = diameter_at_breastheight(stem_cloud)
+    tree_data['DBH'] = diameter_at_breastheight(stem_cloud, tree_data['stem_basepoint'][2])
     tree_data['CBH'] = tree_data['DBH'] * np.pi if tree_data['DBH'] is not None else None
     tree_data['stem_mesh'] = stem_to_mesh(stem_cloud)
     logger.info("Done.")
@@ -546,9 +510,176 @@ def process_tree(tree_cloud, ground_cloud, adTree_exe, filter_leaves=None):
     tree_data['tree_height'] = tree_data['crown_baseheight'] + tree_data['crown_height']
     logger.info("Done.")
 
-    # LoD generation
-    # logger.info("LoD generation...")
-    # tree_data['LoD'] = generate_lod(tree_data)
-    # logger.info("Done.")
-
     return tree_data, labels
+
+
+# /------------------
+# /- LOD generation -
+# /------------------
+def generate_LOD_v2(tree_cloud, stem_radius, tree_base, crown_base,
+                   crown_height, resolution=6):
+    """Function to generate LOD2 mesh."""
+
+    tree_top = crown_base + np.array([0,0, crown_height])
+
+    # construct stem rims
+    angles = [2*math.pi*i/float(resolution) for i in range(resolution)]
+    stem_bottom_rim = np.array([
+        np.array([math.cos(theta), math.sin(theta), 0.0]) * stem_radius + tree_base
+        for theta in angles], dtype=float).reshape((-1,3))
+    stem_top_rim = np.array([
+        np.array([math.cos(theta), math.sin(theta), 0.0]) * stem_radius + crown_base
+        for theta in angles], dtype=float).reshape((-1,3))
+
+    # construct crown rims
+    points = np.array(tree_cloud.points)
+    points -= np.hstack([crown_base[:2], 0])
+    z_bins = np.linspace(crown_base[2], tree_top[2], 20, endpoint=False)
+    digi = np.digitize(points[:,2], z_bins)
+
+    cyl_arrays = []
+    for i in range(1, 20):
+        if np.sum(digi==i) > 0:
+            r = np.max(np.abs(np.linalg.norm(points[digi==i][:,:2], axis=1)))
+            center = np.hstack([crown_base[:2], (z_bins[i]+z_bins[i-1])/2])
+            cyl_arrays.append((center, r))
+
+    periphery = np.argmax([r for _, r in cyl_arrays])
+    lower_periphery = int(periphery/2)
+    higher_periphery = int(periphery + (len(cyl_arrays)-periphery)/2)
+    cyl_arrays = [cyl_arrays[lower_periphery], cyl_arrays[periphery], cyl_arrays[higher_periphery]]
+
+    crown_rims = np.zeros((0,3))
+    for c, r in cyl_arrays:
+        crown_rim = np.array([
+            np.array([math.cos(theta), math.sin(theta), 0.0]) * r + c
+            for theta in angles], dtype=float).reshape((-1,3))
+        crown_rims = np.vstack([crown_rims, crown_rim])
+
+    vertices = np.vstack([[tree_base, tree_top],
+                            stem_bottom_rim,
+                            stem_top_rim,
+                            crown_rims])
+
+    # create faces
+    num_slices = 4
+    bottom_fan = np.array([
+        [0, (i+1)%resolution+2, i+2]
+        for i in range(resolution) ], dtype=int)
+
+    top_fan = np.array([
+        [1, i+2+resolution*num_slices, (i+1)%resolution+2+resolution*num_slices]
+        for i in range(resolution) ], dtype=int)
+
+    rim_fan = np.array([
+        [[2+i, (i+1)%resolution+2, i+resolution+2],
+            [i+resolution+2, (i+1)%resolution+2, (i+1)%resolution+resolution+2]]
+        for i in range(resolution) ], dtype=int)
+    rim_fan = rim_fan.reshape((-1, 3), order="C")
+
+    side_fan = np.array([
+        rim_fan + resolution*i 
+        for i in range(num_slices)], dtype=int)
+    side_fan = side_fan.reshape((-1, 3), order="C")
+
+    faces = np.vstack([bottom_fan, top_fan, side_fan])
+
+    # create mesh
+    lod = trimesh.base.Trimesh(vertices, faces).as_open3d
+    lod.paint_uniform_color(tree_colors['stem'])
+    lod.compute_vertex_normals()
+    mesh_colors = np.full((len(lod.vertices),3), tree_colors['foliage'])
+    mesh_colors[0] = tree_colors['stem']
+    mesh_colors[2:resolution*2+2] = tree_colors['stem']
+
+    lod.vertex_colors = o3d.utility.Vector3dVector(mesh_colors)
+
+    return lod
+
+
+def generate_LOD_v3(stem_radius, tree_base, crown_base,
+                   crown_mesh, resolution=10, crown_steps=1.5):
+    """Function to generate LOD3 mesh."""
+
+    # crown top point (TODO: compare alternatives...)
+    hull_mesh = crown_mesh.compute_convex_hull()[0]
+    crown_trimesh = o3d_utils.to_trimesh(hull_mesh)
+    ray_origin = np.hstack([crown_base[:2], hull_mesh.get_center()[2]])
+    ray_direction = np.array([[0,0,1]]) # TODO: or stem_axis ??
+    crown_center_max = crown_trimesh.ray.intersects_location([ray_origin], ray_direction)[0][0]
+
+    # construct stem rims
+    angles = [2*math.pi*i/float(resolution) for i in range(resolution)]
+    stem_bottom_rim = np.array([
+        np.array([math.cos(theta), math.sin(theta), 0.0]) * stem_radius + tree_base
+        for theta in angles], dtype=float).reshape((-1,3))
+
+    stem_top_rim = np.array([
+        np.array([math.cos(theta), math.sin(theta), 0.0]) * stem_radius + crown_base
+        for theta in angles], dtype=float).reshape((-1,3))
+
+    # construct crown rims (ray projection)
+    crown_rims = np.zeros((0,3))
+    lenght = np.linalg.norm(crown_center_max - crown_base) + crown_steps
+    crown_ray_origins = np.linspace(crown_base, crown_center_max, int(lenght/crown_steps))[1:]
+    for ray_origin in crown_ray_origins:
+        ray_origin = ray_origin.reshape(1,3)
+        for theta in angles:
+            ray_direction = np.array([[math.cos(theta), math.sin(theta), 0.0]])
+            locations = crown_trimesh.ray.intersects_location(ray_origin, ray_direction)[0]
+            idx = np.argmax(np.linalg.norm(locations - ray_origin, axis=1))
+            crown_rims = np.vstack([crown_rims, locations[idx]])
+
+    vertices = np.vstack([[tree_base, crown_center_max],
+                            stem_bottom_rim,
+                            stem_top_rim,
+                            crown_rims])
+
+    # create faces
+    num_slices = len(crown_ray_origins) + 1
+    bottom_fan = np.array([
+        [0, (i+1)%resolution+2, i+2]
+        for i in range(resolution) ], dtype=int)
+
+    top_fan = np.array([
+        [1, i+2+resolution*(num_slices-1), (i+1)%resolution+2+resolution*(num_slices-1)]
+        for i in range(resolution) ], dtype=int)
+
+    rim_fan = np.array([
+        [[2+i, (i+1)%resolution+2, i+resolution+2],
+            [i+resolution+2, (i+1)%resolution+2, (i+1)%resolution+resolution+2]]
+        for i in range(resolution) ], dtype=int)
+    rim_fan = rim_fan.reshape((-1, 3), order="C")
+
+    side_fan = np.array([
+        rim_fan + resolution*i 
+        for i in range(num_slices-1)], dtype=int)
+    side_fan = side_fan.reshape((-1, 3), order="C")
+
+    faces = np.vstack([bottom_fan, top_fan, side_fan])
+
+    # create mesh
+    lod = trimesh.base.Trimesh(vertices, faces).as_open3d
+    lod.paint_uniform_color(tree_colors['stem'])
+    lod.compute_vertex_normals()
+    mesh_colors = np.full((len(lod.vertices),3), tree_colors['foliage'])
+    mesh_colors[0] = tree_colors['stem']
+    mesh_colors[2:resolution*2+2] = tree_colors['stem']
+
+    lod.vertex_colors = o3d.utility.Vector3dVector(mesh_colors)
+
+    return lod
+
+
+def generate_LOD_v3_1(stem_mesh, crown_mesh):
+    """Function to generate LoD mesh."""
+
+    # merge
+    lod = stem_mesh + crown_mesh
+
+    # increase_stem
+    t = np.asarray(lod.triangles)
+    for idx in np.unique(t[np.isin(t, 1).any(axis=1)])[1:]:
+        lod.vertices[idx][2] += .5
+
+    return lod

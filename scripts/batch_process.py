@@ -1,5 +1,14 @@
 #!/usr/bin/python
 
+# Tree_PointCloud_Processing by Amsterdam Intelligence, GPL-3.0 license
+
+""" 
+Batch processing - Scipt (Python)
+
+The module is adapted from:
+https://github.com/Amsterdam-AI-Team/Urban_PointCloud_Processing
+"""
+
 import os
 import sys
 import logging
@@ -16,7 +25,7 @@ import utils.tree_utils as tree_utils
 import utils.o3d_utils as o3d_utils
 import utils.ahn_utils as ahn_utils
 import utils.las_utils as las_utils
-import utils.lod_utils as lod_utils
+
 
 os.environ['KMP_WARNINGS'] = 'off'
 
@@ -36,7 +45,7 @@ DATA_KEYS = ['source', 'treecode', 'stem_basepoint', 'tree_height', 'stem_height
 def _export_lods(out_path, tree_cloud, tree_data):
 
     try: # LOD 2
-        lod = lod_utils.lod_2(tree_cloud, tree_data['DBH']/2, tree_data['stem_basepoint'],
+        lod = tree_utils.generate_LOD_v2(tree_cloud, tree_data['DBH']/2, tree_data['stem_basepoint'],
                                 tree_data['crown_basepoint'], tree_data['crown_height'])
         o3d_utils.to_trimesh(lod).export(
             out_path.joinpath('lods/lod_2_'+tree_data['source']+'_'+tree_data['treecode']+'.obj'))
@@ -44,7 +53,7 @@ def _export_lods(out_path, tree_cloud, tree_data):
         pass
 
     try: # LOD 3
-        lod = lod_utils.lod_3(tree_data['DBH']/2, tree_data['stem_basepoint'],
+        lod = tree_utils.generate_LOD_v3(tree_data['DBH']/2, tree_data['stem_basepoint'],
                               tree_data['crown_basepoint'], tree_data['crown_mesh-convex'])
         o3d_utils.to_trimesh(lod).export(
             out_path.joinpath('lods/lod_3_'+tree_data['source']+'_'+tree_data['treecode']+'.obj'))
@@ -53,7 +62,7 @@ def _export_lods(out_path, tree_cloud, tree_data):
     
     try: # LOD 3.1
         if tree_data['crown_mesh-alpha'].get_volume() > 2:
-            lod = lod_utils.lod_31(tree_data['crown_mesh-alpha'], tree_data['stem_mesh'])
+            lod = tree_utils.generate_LOD_v3_1(tree_data['crown_mesh-alpha'], tree_data['stem_mesh'])
             o3d_utils.to_trimesh(lod).export(
                 out_path.joinpath('lods/lod_31_'+tree_data['source']+'_'+tree_data['treecode']+'.obj'))
     except:

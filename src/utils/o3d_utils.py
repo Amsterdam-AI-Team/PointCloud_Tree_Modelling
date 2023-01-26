@@ -1,20 +1,28 @@
-# Urban_PointCloud_Processing by Amsterdam Intelligence, GPL-3.0 license
+# Tree_PointCloud_Processing by Amsterdam Intelligence, GPL-3.0 license
+
+"""
+Open3D utility methods - Module (Python)
+"""
+
 import math
-import numpy as np
+
 import laspy
-import open3d as o3d
 import trimesh
-from misc.quaternion import Quaternion
-import matplotlib.pyplot as plt
+import numpy as np
+import open3d as o3d
 from alphashape import alphashape
 from descartes import PolygonPatch
+import matplotlib.pyplot as plt
+
+from misc.quaternion import Quaternion
 
 
-######## PointCloud utils ##########
-
+# --------------------
+# PointCloud utils
+# --------------------
 def point_density(pcd):
     """Compute the average nearest neighbor distance for the point cloud."""
-    dist = pcd.compute_nearest_neighbor_distance()  
+    dist = pcd.compute_nearest_neighbor_distance()
     return np.round(np.mean(dist), 3)
 
 
@@ -23,7 +31,6 @@ def statistics(pcd):
     density = point_density(pcd)
     n = len(pcd.points)
     x, y, z = np.round(pcd.get_max_bound() - pcd.get_min_bound(), 1)
-
     print(f"Point cloud of {n} points, ({x}x{y}x{z}), and {density} point density.")
 
 
@@ -45,7 +52,7 @@ def read_las(las_file, output_stats=False):
 
 def save_las(pcd, outfile): #, labels=[]):
     """Save a o3d.geometry.PointCloud as las file."""
-    
+ 
     points = np.asarray(pcd.points)
 
     las = laspy.create(file_version="1.2", point_format=3)
@@ -116,6 +123,7 @@ def project(pcd, axis, voxel_size=None):
 
 
 def trace_back(trace, ind):
+    """Trace back points of voxilezed point cloud."""
     trace_ind = np.hstack([trace[i] for i in ind])
     return trace_ind
 
@@ -125,15 +133,16 @@ def cloud_height(cloud):
     height = cloud.get_max_bound()[2] - cloud.get_min_bound()[2]
     return height
 
-
-######## MESH utils ##########
-
+# -------------
+# Mesh utils 
+# ------------
 def simplify_mesh(mesh, num_triangles):
+    """Simplify mesh faces to a maximum."""
     return mesh.simplify_quadric_decimation(target_number_of_triangles=num_triangles)
 
 
 def project_mesh(mesh):
-
+    """Project mesh top-down."""
     # make shape
     pts = np.array(mesh.vertices)[:,:2]
     shape = alphashape(pts, 0.8)
@@ -149,6 +158,24 @@ def project_mesh(mesh):
 
 
 def plot_mesh(mesh):
+    """Plot mesh in grid."""
+    colors = np.asarray(mesh.vertex_colors)
+    if len(colors) > 0:
+        color = colors[0]
+    else:
+        color = [.7,.7,.7]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    ax.plot_trisurf(*zip(*mesh.vertices), triangles=mesh.triangles, color=color)
+    ax.axis('equal')
+    plt.show()
+
+
+def plot_mesh_cloud(mesh, cloud):
+    """Function to plot mesh in combination with cloud."""
+
+    points = np.asarray(cloud.points)
     colors = np.asarray(mesh.vertex_colors)
     if len(colors) > 0:
         color = colors[0]
@@ -157,12 +184,14 @@ def plot_mesh(mesh):
 
     fig = plt.figure()
     ax = plt.axes(projection='3d')
-    ax.plot_trisurf(*zip(*mesh.vertices), triangles=mesh.triangles, color=color)
+    ax.plot_trisurf(*zip(*mesh.vertices), triangles=mesh.triangles, color=color, alpha=0.3, linewidth=.5, edgecolor=[0,0,0])
+    ax.scatter(points[:,0], points[:,1], points[:,2], s=0.5, alpha=0.9, c=np.asarray(cloud.colors))
     ax.axis('equal')
     plt.show()
 
 
 def show_mesh(mesh, color=None):
+    """Shown mesh."""
     if color:
         mesh.paint_uniform_color(color)
     mesh.compute_vertex_normals()
@@ -170,13 +199,14 @@ def show_mesh(mesh, color=None):
 
 
 def show_mesh_cloud(mesh, cloud):
-
+    """Shown cloud with mesh lines."""
     lines = o3d.geometry.LineSet.create_from_triangle_mesh(mesh)
     lines.paint_uniform_color([0.8, .2, 0])
     o3d.visualization.draw_geometries([cloud, lines])
 
 
 def to_trimesh(mesh):
+    """Convert to trimesh Trimesh."""
     return trimesh.base.Trimesh(mesh.vertices, mesh.triangles)
 
 
@@ -197,7 +227,7 @@ def surface_mesh_creation(cloud):
 
 
 def mesh_from_cylinders(cyl_array, color=[0.7,0.7,0.7], resolution=15):
-    """Function to construct o3d mesh from cylindrical sections."""
+    """Function to construct mesh from cylindrical sections."""
     circle_fits = [(rim[:3], rim[3]) for rim in cyl_array]
     num_slices = len(circle_fits)
 

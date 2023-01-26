@@ -1,11 +1,13 @@
-# Urban_PointCloud_Processing by Amsterdam Intelligence, GPL-3.0 license
+# Tree_PointCloud_Processing by Amsterdam Intelligence, GPL-3.0 license
+
+""" 
+Graph utility methods - Module (Python)
+"""
 
 import numpy as np
 import networkx as nx
-from plyfile import PlyData, PlyElement
+from plyfile import PlyData
 
-
-######## Netwrok X Graph utils ##########
 
 def read_ply(ply_file):
     """Function to read graph from ply file."""
@@ -31,9 +33,8 @@ def read_ply(ply_file):
 
 def path_till_split(graph, start_node):
     """Function to retrieve graph path from `start_node` till first split."""
-    # TODO check if start exists
-
-    path = [start_node]
+    
+    path = [start_node] # TODO check if start exists
     while graph.out_degree(path[-1]) == 1:
         for node in graph.successors(path[-1]):
             path.append(node)

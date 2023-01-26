@@ -1,13 +1,90 @@
-# 
-# Fit cylinders - Library (Python)
-# 
+# Tree_PointCloud_Processing by Amsterdam Intelligence, GPL-3.0 license
+
+"""
+Cylinder fit methods - Module (Python)
+
+The module is adapted from:
+https://github.com/SKrisanski/FSCT/blob/main/scripts/measure.py
+"""
+
 import warnings
-import open3d as o3d
-import trimesh
+
 import numpy as np
-import utils.math_utils as math_utils
+import open3d as o3d
 from scipy.optimize import leastsq
 from scipy.spatial.transform import Rotation as R
+
+import utils.math_utils as math_utils
+
+
+def show_cylinders(stem_cylinders, resolution=15, cloud=None):
+    """Function to plot stem cylinders."""
+
+    geometries = []
+    for result in stem_cylinders:
+        c = result[:3]
+        r = result[3]
+
+        line_points = np.zeros((0,3))
+        for i in range(resolution):
+            phi = i*np.pi/(resolution/2)
+            rim_points = (c[0] + r*np.cos(phi), c[1] + r*np.sin(phi), c[2])
+            line_points = np.vstack((line_points, rim_points))
+
+        line_set = o3d.geometry.LineSet()
+        line_set.points = o3d.utility.Vector3dVector(line_points)
+        line_set.lines = o3d.utility.Vector2iVector([(i,i+1) for i in range(resolution-1)])
+        line_set.colors = o3d.utility.Vector3dVector(np.zeros((resolution-1,3)))
+        geometries.append(line_set)
+
+    if cloud is not None:
+        geometries.append(cloud)
+
+    o3d.visualization.draw_geometries(geometries)
+
+
+def circumferential_completeness_index(fitted_circle_centre, estimated_radius, slice_points):
+    """
+    Computes the Circumferential Completeness Index (CCI) of a fitted circle.
+    Args:
+        fitted_circle_centre: x, y coords of the circle centre
+        estimated_radius: circle radius
+        slice_points: the points the circle was fitted to
+    Returns:
+        CCI
+    """
+
+    sector_angle = 4.5  # degrees
+    num_sections = int(np.ceil(360 / sector_angle))
+    sectors = np.linspace(-180, 180, num=num_sections, endpoint=False)
+
+    centre_vectors = slice_points[:, :2] - fitted_circle_centre
+    norms = np.linalg.norm(centre_vectors, axis=1)
+
+    centre_vectors = centre_vectors / np.atleast_2d(norms).T
+    centre_vectors = centre_vectors[
+        np.logical_and(norms >= 0.8 * estimated_radius, norms <= 1.2 * estimated_radius)
+    ]
+
+    sector_vectors = np.vstack((np.cos(sectors), np.sin(sectors))).T
+    CCI = (
+        np.sum(
+            [
+                np.any(
+                    np.degrees(
+                        np.arccos(
+                            np.clip(np.einsum("ij,ij->i", np.atleast_2d(sector_vector), centre_vectors), -1, 1)
+                        )
+                    )
+                    < sector_angle / 2
+                )
+                for sector_vector in sector_vectors
+            ]
+        )
+        / num_sections
+    )
+
+    return CCI
 
 
 def fit_vertical_cylinder_3D(xyz, th):
