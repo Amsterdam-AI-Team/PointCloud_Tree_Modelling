@@ -7,7 +7,7 @@ This repository contains methods for the **automatic extraction of various chara
 
 Example [notebooks](./pctm/notebooks) are provided to demonstrate the tools.
 
-![Comparison of datasets (side-view)](./imgs/pc_comparison.png.png)
+![Comparison of datasets (side-view)](./imgs/pc_comparison.png)
 
 ---
 
