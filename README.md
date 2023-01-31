@@ -32,7 +32,7 @@ For a quick dive into this repository take a look at our [complete solution note
    * [`cyclo media`](./dataset/cyclo) _Example tree point clouds in Cyclo Media scan_
    * [`sonarski`](./dataset/sonarski) _Example tree point clouds in Sonarski scan_
  * [`media`](./imgs) _Visuals_
- * ['pctm'](./pctm/) _Python Library_
+ * [`pctm`](./pctm/) _Python Library_
    * [`notebooks`](./pctm/notebooks) _Jupyter notebook tutorials_
    * [`scripts`](./pctm/scripts) _Python scripts_
    * [`src`](./pctm/src) _Python source code_
