@@ -5,9 +5,9 @@ This repository contains methods for the **automatic extraction of various chara
 1. Usage in The Netherlands (The "[Rijksdriehoek coordinate system](https://nl.wikipedia.org/wiki/Rijksdriehoeksco%C3%B6rdinaten)");
 2. Point clouds in LAS format.
 
-Example [notebooks](notebooks) are provided to demonstrate the tools.
+Example [notebooks](./pctm/notebooks) are provided to demonstrate the tools.
 
-![Comparison of datasets (side-view)](./imgs/20_side.png)
+![Comparison of datasets (side-view)](./imgs/pc_comparison.png.png)
 
 ---
 
@@ -17,21 +17,26 @@ The goal of this project is to automatically extract various features such as he
 
 The first solution we provide is a pipeline that extracts various features from a **stand alone tree**. The input of this pipeline is a fully segmentated tree and produces a list of computed characteristics of the tree. These characteristics can be used for research or other purposes.
 
-We also provide some tree-group segementation methods that splits **groups of trees** into individual ones. For example, one can use the tree segmentation method to retrieve individual trees that can be used as input for the stand alone tree pipeline.
+An example of a volume estimation for a given point cloud tree:
+![convex_hull.png](./imgs/crown_mesh_comparison.png)
 
-For a quick dive into this repository take a look at our [complete solution notebook](notebooks/0.%20Complete%20solution.ipynb).
+For a quick dive into this repository take a look at our [complete solution notebook](./pctm/notebooks/Complete%20Solution.ipynb).
 
 ---
 
 ## Folder Structure
 
- * [`datasets`](./datasets) _Demo dataset to get started_
-   * [`selection`](./datasets/single_selection) _Example tree point clouds_
- * [`media`](./media) _Visuals_
- * [`notebooks`](./notebooks) _Jupyter notebook tutorials_
- * [`scripts`](./scripts) _Python scripts_
- * [`src`](./src) _Python source code_
-   * [`utils`](./src/utils) _Utility functions_
+ * [`datasets`](./dataset) _Demo dataset to get started_
+   * [`ahn_surf`](./dataset/ahn_surf) _Example surface reference for tree point clouds_
+   * [`ahn`](./dataset/ahn) _Example tree point clouds in AHN scan_
+   * [`cyclo media`](./dataset/cyclo) _Example tree point clouds in Cyclo Media scan_
+   * [`sonarski`](./dataset/sonarski) _Example tree point clouds in Sonarski scan_
+ * [`media`](./imgs) _Visuals_
+ * ['pctm'](./pctm/) _Python Library_
+   * [`notebooks`](./pctm/notebooks) _Jupyter notebook tutorials_
+   * [`scripts`](./pctm/scripts) _Python scripts_
+   * [`src`](./pctm/src) _Python source code_
+    * [`utils`](./pctm/src/utils) _Utility functions_
 
 ---
 
@@ -75,7 +80,7 @@ This code has been tested with `Python >= 3.8` on `Linux` and `MacOS`, and shoul
 
 ## Usage
 
-We provide tutorial [notebooks](notebooks) that demonstrate how the tools can be used.
+We provide tutorial [notebooks](./pctm/notebooks) that demonstrate how the tools can be used.
 
 For visualisation of the resulting labelled point clouds we suggest [CloudCompare](https://www.danielgm.net/cc/). Simply open the labelled .laz in CloudCompare.
 
