@@ -1,4 +1,4 @@
-# PointCloud Tree Analysis
+# PointCloud Tree Modelling
 
 This repository contains methods for the **automatic extraction of various characteristics of trees in point clouds** using advanced analytical methods. The methods can serve as inspiration, or can be applied as-is under some specific assumptions:
 
@@ -51,7 +51,7 @@ This code has been tested with `Python >= 3.10` on `Linux` and `MacOS`, and shou
     git clone <github-url>
 
     # Install dependencies
-    cd Tree_PointCloud_Processing
+    cd PointCloud_Tree_Modelling
     python -m pip install -r requirements.txt
     ```
 
@@ -75,19 +75,21 @@ This code has been tested with `Python >= 3.10` on `Linux` and `MacOS`, and shou
     - Use CMake to generate Makefiles and then build (Linux or macOS).
       ```
       $ cd AdTree 
-      $ mkdir Build
-      $ cd Build
+      $ mkdir build
+      $ cd build
       $ cmake -DCMAKE_BUILD_TYPE=Release ..
       $ make
       ```
 
 ---
 
-### Data
-Some test tree point clouds are provided in the '* [`dataset`](./dataset)' folder.
+## Data
+Some test tree point clouds are provided in the '[`dataset`](./dataset)' folder.
 
 **Note:** When testing on your point clouds, please make sure that:
  - your point cloud represents a single tree (i.e., the tree is segmented out from the background; no ground, no fence...);
+ - tree point cloud files are stored with `filtered_tree_` prefix.
+ - a separate folder can be used inside [`dataset`](./dataset) to group trees.
  - the tree has an upright orientation (i.e., with Z-axis pointing up).
 
 ---
@@ -107,6 +109,18 @@ Some test tree point clouds are provided in the '* [`dataset`](./dataset)' folde
 
 ---
 
+## License
+
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License or (at your option) any later version. The full text of the license can be found in the accompanying LICENSE file.
+
+---
+
 ## Acknowledgements
 
-This repository was created by [Falke Boskaljon](https://falke-boskaljon.nl/) for the City of Amsterdam.
+This repository was created by [Falke Boskaljon](https://falke-boskaljon.nl/) for the City of Amsterdam. Should you have any questions, comments, or suggestions, please contact us.
+
+Amsterdam Intelligence, City of Amsterdam,
+
+https://www.amsterdamintelligence.com,
+
+

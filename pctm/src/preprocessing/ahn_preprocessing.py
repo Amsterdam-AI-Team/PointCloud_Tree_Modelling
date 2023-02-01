@@ -1,4 +1,4 @@
-# Tree_PointCloud_Processing by Amsterdam Intelligence, GPL-3.0 license
+# PointCloud_Tree_Modelling by Amsterdam Intelligence, GPL-3.0 license
 
 """
 AHN pre-processing methods - Module (Python)
