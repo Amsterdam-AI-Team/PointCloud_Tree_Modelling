@@ -13,9 +13,9 @@ Example [notebooks](./pctm/notebooks) are provided to demonstrate the tools.
 
 ## Project Goal
 
-The goal of this project is to automatically extract various features such as height, width, lowest branch, and other characteristics in point clouds. This information can be of value for tree health research and more. One of the main challenges in this project are overlapping trees, since it is difficult to distinguish in 3D point clouds which part belongs to which tree. Moreover, the sparsity and non-uniform density of typical point clouds makes robust methods difficult.
+The goal of this project is to automatically extract various features such as height, width, volume, and other characteristics of trees from point clouds. One of the main challenges in this project is the sparsity and non-uniform density of tree point clouds. This project provides an analysis for multiple data sources.
 
-The first solution we provide is a pipeline that extracts various features from a **stand alone tree**. The input of this pipeline is a fully segmentated tree and produces a list of computed characteristics of the tree. These characteristics can be used for research or other purposes.
+The first solution we provide is a pipeline that extracts various features from a **stand alone trees**. The input of this pipeline is a fully segmentated tree and produces a list of computed characteristics of the tree. These characteristics can be used for research or other purposes.
 
 An example of a volume estimation for a given point cloud tree:
 ![convex_hull.png](./imgs/crown_mesh_comparison.png)
@@ -42,47 +42,68 @@ For a quick dive into this repository take a look at our [complete solution note
 
 ## Installation
 
-This code has been tested with `Python >= 3.8` on `Linux` and `MacOS`, and should likely work under Windows as well.
+This code has been tested with `Python >= 3.10` on `Linux` and `MacOS`, and should likely work under Windows as well.
 
 1.  To use this code in development mode simply clone the repository and install the dependencies.
 
     ```bash
     # Clone the repository
-    git clone https://github.com/Amsterdam-AI-Team/Urban_PointCloud_Processing.git
+    git clone <github-url>
 
     # Install dependencies
-    cd Urban_PointCloud_Processing
+    cd Tree_PointCloud_Processing
     python -m pip install -r requirements.txt
     ```
 
-    or, with Conda:
-    ```bash
-    conda env create -f environment.yml
-    ```
+2.  Build AdTree
 
-2.  Alternatively, the code can be installed as a Python package from source:
+    AdTree depends on some third-party libraries and most dependencies are included in the distribution except 
+    [Boost](https://www.boost.org/). So you will need to have Boost installed first. 
 
-    ```bash
-    # Install the latest release as Wheel
-    python -m pip install https://github.com/Amsterdam-AI-Team/Urban_PointCloud_Processing/releases/download/v0.1/upcp-0.1-py3-none-any.whl
+    Note: AdTree uses a stripped earlier version of [Easy3D](https://github.com/LiangliangNan/Easy3D), which is not 
+    compatible with the latest version.
 
-    # Alternatively, install the latest version from source
-    python -m pip install git+https://github.com/Amsterdam-AI-Team/Urban_PointCloud_Processing.git#egg=upcp
+    You need [CMake](https://cmake.org/download/) and of course a compiler to build AdTree:
 
-    # Or, after making changes in the code
-    cd Urban_PointCloud_Processing
-    python -m pip install .
-    ```
+    - CMake `>= 3.1`
+    - a compiler that supports `>= C++11`
 
-    If you use the latter and want your code changes to take effect without re-installing the package, use the `--editable` flag for pip.
+    AdTree has been tested on macOS (Xcode >= 8), Windows (MSVC >=2015), and Linux (GCC >= 4.8, Clang >= 3.3). Machines 
+    nowadays typically provide higher [support](https://en.cppreference.com/w/cpp/compiler_support), so you should be 
+    able to build AdTree on almost all platforms.
+
+    - Use CMake to generate Makefiles and then build (Linux or macOS).
+      ```
+      $ cd AdTree 
+      $ mkdir Build
+      $ cd Build
+      $ cmake -DCMAKE_BUILD_TYPE=Release ..
+      $ make
+      ```
+
+---
+
+### Data
+Some test tree point clouds are provided in the '* [`dataset`](./dataset)' folder.
+
+**Note:** When testing on your point clouds, please make sure that:
+ - your point cloud represents a single tree (i.e., the tree is segmented out from the background; no ground, no fence...);
+ - the tree has an upright orientation (i.e., with Z-axis pointing up).
 
 ---
 
 ## Usage
 
-We provide tutorial [notebooks](./pctm/notebooks) that demonstrate how the tools can be used.
+- Option 1, use the provided [notebooks](./pctm/notebooks) that demonstrate how the tools can be used.
 
-For visualisation of the resulting labelled point clouds we suggest [CloudCompare](https://www.danielgm.net/cc/). Simply open the labelled .laz in CloudCompare.
+- Option 2, use the command line to process a complete dataset. First, on has to pre-process the AHN data to create surface files using [AHN Preprocessing.ipynb](./pctm/notebooks/AHN%20Preprocessing.ipynb). Then use the following code.
+  
+  ```bash
+  cd pctm/scripts
+  python script.py --in_folder '../../dataset' [--lod]
+  ```
+
+  The `--lod` argument is optional to produce lod models for the trees.
 
 ---
 
