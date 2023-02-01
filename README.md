@@ -55,7 +55,7 @@ This code has been tested with `Python >= 3.10` on `Linux` and `MacOS`, and shou
     python -m pip install -r requirements.txt
     ```
 
-2.  Build AdTree
+2.  Build [AdTree](https://github.com/tudelft3d/AdTree)
 
     AdTree depends on some third-party libraries and most dependencies are included in the distribution except 
     [Boost](https://www.boost.org/). So you will need to have Boost installed first. 
