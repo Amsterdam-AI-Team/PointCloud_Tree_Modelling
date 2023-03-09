@@ -44,7 +44,7 @@ For a quick dive into this repository take a look at our [complete solution note
 
 This code has been tested with `Python >= 3.8` on `Linux` and `MacOS`, and should likely work under Windows as well. There are two ways for installing the repository
 
-#### Using Docker-image
+### Using Docker-image
 To use this using the docker. Build the provide Dockerfile. code in development mode simply clone the repository and install the dependencies.
 
 1. Clone the repository
@@ -67,10 +67,14 @@ To use this using the docker. Build the provide Dockerfile. code in development 
     ```
 
     The `-v` command is used to mount volumes for both data and code to the container.
-    One could run the image in iteractive mode using the following run command ```docker run -v `pwd`/pctm:/usr/local/app/pctm -v `pwd`/dataset:/usr/local/app/dataset -it --entrypoint /bin/bash treemodelling:latest```.
+    
+    One could run the image in iteractive mode using the following run command: 
+    ```
+    $ docker run -v `pwd`/pctm:/usr/local/app/pctm -v `pwd`/dataset:/usr/local/app/dataset -it --entrypoint /bin/bash treemodelling:latest
+    ```
 
 
-#### Build from scratch
+### Build from scratch
 
 1.  Clone the repository and install the dependencies.
 
