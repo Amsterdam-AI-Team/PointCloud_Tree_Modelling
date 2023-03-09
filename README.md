@@ -42,10 +42,10 @@ For a quick dive into this repository take a look at our [complete solution note
 
 ## Installation
 
-This code has been tested with `Python >= 3.8` on `Linux` and `MacOS`, and should likely work under Windows as well. There are two ways for installing the repository
+This code has been tested with `Python >= 3.8` on `Linux` and `MacOS`, and should likely work under Windows as well. There are two ways for installing the repository:
 
 ### Using Docker-image
-To use this using the docker. Build the provide Dockerfile. code in development mode simply clone the repository and install the dependencies.
+To use this using the docker. Build the provide Dockerfile. code in development mode simply clone the repository and install the dependencies. Note if the image's platform (linux/amd64) does not match the host platform, significant drops in performance can occur.
 
 1. Clone the repository
 
