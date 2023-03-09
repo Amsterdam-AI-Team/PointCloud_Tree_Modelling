@@ -153,7 +153,7 @@ class NPZReader(AHNReader):
         """Function to get the surface points of a tree."""
         ahn_tile = self.filter_file(treecode)
         X, Y = np.meshgrid(ahn_tile['x'], ahn_tile['y'])
-        ahn_points = np.vstack(map(np.ravel, [X,Y,ahn_tile['ground_surface']])).T
+        ahn_points = np.vstack(list(map(np.ravel, [X,Y,ahn_tile['ground_surface']]))).T
         ahn_points = ahn_points[~np.isnan(ahn_points).any(axis=1)]
         return ahn_points
 
@@ -162,7 +162,7 @@ class NPZReader(AHNReader):
         """Function to get the surface points of a tree."""
         ahn_tile = self.filter_file(treecode)
         X, Y = np.meshgrid(ahn_tile['x'], ahn_tile['y'])
-        ahn_points = np.vstack(map(np.ravel, [X,Y,ahn_tile['ground_surface']])).T
+        ahn_points = np.vstack(list(map(np.ravel, [X,Y,ahn_tile['ground_surface']]))).T
         ahn_points = ahn_points[~np.isnan(ahn_points).any(axis=1)]
         cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(ahn_points))
         return cloud

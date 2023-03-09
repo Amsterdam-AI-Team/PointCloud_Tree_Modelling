@@ -30,11 +30,9 @@ os.environ['KMP_WARNINGS'] = 'off'
 logging.basicConfig(filename='python.log',
                     filemode='a',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                    datefmt='%H:%M:%S',
-                    encoding='utf-8',
                     level=logging.INFO)
 
-ADTREE_EXE = '../../AdTree/build/bin/AdTree.app/Contents/MacOS/AdTree'
+ADTREE_EXE = '../../bin/AdTree'
 DATA_KEYS = ['source', 'treecode', 'stem_basepoint', 'tree_height', 'stem_height',
              'crown_height', 'crown_baseheight', 'stem_angle', 'DBH', 'CBH',
              'crown_shape', 'crown_diameter', 'crown_volume-alpha', 'crown_volume-convex']

@@ -42,17 +42,45 @@ For a quick dive into this repository take a look at our [complete solution note
 
 ## Installation
 
-This code has been tested with `Python >= 3.10` on `Linux` and `MacOS`, and should likely work under Windows as well.
+This code has been tested with `Python >= 3.8` on `Linux` and `MacOS`, and should likely work under Windows as well. There are two ways for installing the repository
 
-1.  To use this code in development mode simply clone the repository and install the dependencies.
+#### Using Docker-image
+To use this using the docker. Build the provide Dockerfile. code in development mode simply clone the repository and install the dependencies.
+
+1. Clone the repository
 
     ```bash
     # Clone the repository
-    git clone <github-url>
+    $ git clone <github-url>
+    ```
+
+2. Build the docker image (the building can take a couple of minutes):
+
+    ```bash
+    $ docker build -f Dockerfile . -t treemodelling:latest
+    ```
+
+3. Run docker container (as jupyter server on port 8888):
+
+    ```bash
+    $ docker run -v `pwd`/pctm:/usr/local/app/pctm -v `pwd`/dataset:/usr/local/app/dataset -it -p 8888:8888 treemodelling:latest
+    ```
+
+    The `-v` command is used to mount volumes for both data and code to the container.
+    One could run the image in iteractive mode using the following run command ```docker run -v `pwd`/pctm:/usr/local/app/pctm -v `pwd`/dataset:/usr/local/app/dataset -it --entrypoint /bin/bash treemodelling:latest```.
+
+
+#### Build from scratch
+
+1.  Clone the repository and install the dependencies.
+
+    ```bash
+    # Clone the repository
+    $ git clone <github-url>
 
     # Install dependencies
-    cd PointCloud_Tree_Modelling
-    python -m pip install -r requirements.txt
+    $ cd PointCloud_Tree_Modelling
+    $ python -m pip install -r requirements.txt
     ```
 
 2.  Build [AdTree](https://github.com/tudelft3d/AdTree)
@@ -75,11 +103,13 @@ This code has been tested with `Python >= 3.10` on `Linux` and `MacOS`, and shou
     - Use CMake to generate Makefiles and then build (Linux or macOS).
       ```
       $ cd AdTree 
-      $ mkdir build
-      $ cd build
+      $ mkdir Release
+      $ cd Release
       $ cmake -DCMAKE_BUILD_TYPE=Release ..
       $ make
       ```
+
+    - For most systems the path to the executable is `./AdTree/Release/bin/AdTree`. This can be of relevance in python code. 
 
 ---
 
@@ -101,8 +131,8 @@ Some test tree point clouds are provided in the '[`dataset`](./dataset)' folder.
 - Option 2, use the command line to process a complete dataset. First, on has to pre-process the AHN data to create surface files using [AHN Preprocessing.ipynb](./pctm/notebooks/AHN%20Preprocessing.ipynb). Then use the following code.
   
   ```bash
-  cd pctm/scripts
-  python script.py --in_folder '../../dataset' [--lod]
+  $ cd pctm/scripts
+  $ python script.py --in_folder '../../dataset' [--lod]
   ```
 
   The `--lod` argument is optional to produce lod models for the trees.
