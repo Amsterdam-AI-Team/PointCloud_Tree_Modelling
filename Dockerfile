@@ -1,4 +1,4 @@
-FROM ubuntu:20.04 AS builder
+FROM --platform=linux/amd64 ubuntu:20.04 AS builder
 
 ENV DEBIAN_FRONTEND="noninteractive" TZ="Europe/Amsterdam"
 
@@ -23,7 +23,7 @@ RUN cmake -DCMAKE_BUILD_TYPE=Release ..
 RUN make
 
 # SECOND_STAGE
-FROM ubuntu:20.04 AS runtime
+FROM --platform=linux/amd64 ubuntu:20.04 AS runtime
 
 ENV DEBIAN_FRONTEND="noninteractive" TZ="Europe/Amsterdam"
 
