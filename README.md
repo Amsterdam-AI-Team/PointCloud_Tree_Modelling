@@ -51,7 +51,7 @@ To use this using the docker. Build the provide Dockerfile. code in development 
 
     ```bash
     # Clone the repository
-    $ git clone <github-url>
+    $ git clone https://github.com/Amsterdam-AI-Team/PointCloud_Tree_Modelling.git
     ```
 
 2. Build the docker image (the building can take a couple of minutes):
@@ -80,7 +80,7 @@ To use this using the docker. Build the provide Dockerfile. code in development 
 
     ```bash
     # Clone the repository
-    $ git clone <github-url>
+    $ git clone https://github.com/Amsterdam-AI-Team/PointCloud_Tree_Modelling.git
 
     # Install dependencies
     $ cd PointCloud_Tree_Modelling
