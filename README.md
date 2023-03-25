@@ -13,9 +13,9 @@ Example [notebooks](./pctm/notebooks) are provided to demonstrate the tools.
 
 ## Project Goal
 
-The goal of this project is to automatically extract various features such as height, width, volume, and other characteristics of trees from point clouds. One of the main challenges in this project is the sparsity and non-uniform density of tree point clouds. This project provides an analysis for multiple data sources.
+The goal of this project is to automatically extract various features such as tree height, crown volume, trunk diameter and other characteristics of trees from point clouds. One of the main challenges in this project is the sparsity and non-uniform density of tree point clouds. This project provides an analysis for multiple data sources.
 
-The first solution we provide is a pipeline that extracts various features from a **stand alone trees**. The input of this pipeline is a fully segmentated tree and produces a list of computed characteristics of the tree. These characteristics can be used for research or other purposes.
+We provide a pipeline that extracts various features from a **stand alone tree**. The input of this pipeline is a fully segmentated tree and produces a list of computed characteristics of the tree. These characteristics can be used for research or other purposes.
 
 An example of a volume estimation for a given point cloud tree:
 ![convex_hull.png](./imgs/crown_mesh_comparison.png)
@@ -106,9 +106,8 @@ To use this using the docker. Build the provide Dockerfile. code in development 
 
     - Use CMake to generate Makefiles and then build (Linux or macOS).
       ```
-      $ cd AdTree 
-      $ mkdir Release
-      $ cd Release
+      $ mkdir -p AdTree/Release
+      $ cd AdTree/Release
       $ cmake -DCMAKE_BUILD_TYPE=Release ..
       $ make
       ```
@@ -140,6 +139,8 @@ Some test tree point clouds are provided in the '[`dataset`](./dataset)' folder.
   ```
 
   The `--lod` argument is optional to produce lod models for the trees.
+  
+  The output is a csv file containing for each tree in the specified data folder a list of estimated tree features. After processing the csv file is written to the specified dataset folder.
 
 ---
 
