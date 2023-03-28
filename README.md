@@ -89,7 +89,7 @@ To use this using the docker. Build the provide Dockerfile. code in development 
 
 2.  Building the AdTree executable 
 
-    In this repository we use an modified version of [AdTree: Accurate, Detailed, and Automatic Modelling of Laser-Scanned Trees.](https://github.com/tudelft3d/AdTree) located in the [`AdTree`](./AdTree) folder. To build the excecutable some third-party libraries and dependencies must be included. Most dependencies are included in the distribution except [Boost](https://www.boost.org/). So you will need to have Boost installed first. 
+    In this repository we use a modified version of [AdTree: Accurate, Detailed, and Automatic Modelling of Laser-Scanned Trees.](https://github.com/tudelft3d/AdTree) located in the [`AdTree`](./AdTree) folder. To build the excecutable some third-party libraries and dependencies must be included. Most dependencies are included in the distribution except [Boost](https://www.boost.org/). So you will need to have Boost installed first. 
 
     You need [CMake](https://cmake.org/download/) and of course a compiler to build AdTree:
 
