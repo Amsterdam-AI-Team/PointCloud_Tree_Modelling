@@ -22,7 +22,7 @@ from utils import (
       o3d_utils,
       tree_utils
   )
-
+from config import Paths
 
 os.environ['KMP_WARNINGS'] = 'off'
 
@@ -32,7 +32,6 @@ logging.basicConfig(filename='python.log',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     level=logging.INFO)
 
-ADTREE_EXE = '../../bin/AdTree'
 DATA_KEYS = ['source', 'treecode', 'stem_basepoint', 'tree_height', 'stem_height',
              'crown_height', 'crown_baseheight', 'stem_angle', 'DBH', 'CBH',
              'crown_shape', 'crown_diameter', 'crown_volume-alpha', 'crown_volume-convex']
@@ -74,7 +73,7 @@ def _process_file(out_path, ahn_reader, file, lod=False):
         ground_cloud = ahn_reader.get_surface(treecode)
 
         # process
-        tree_data, _ = tree_utils.process_tree(tree_cloud, ground_cloud, ADTREE_EXE)
+        tree_data, _ = tree_utils.process_tree(tree_cloud, ground_cloud, Paths.ADTREE)
         tree_data['source'] = file.parent.name
         tree_data['treecode'] = treecode
 
@@ -113,6 +112,10 @@ if __name__ == '__main__':
     ahn_data_folder = in_folder.joinpath('ahn_surf')
     if not ahn_data_folder.is_dir():
         print('The ahn data folder does not exist')
+        sys.exit()
+
+    if not os.path.isfile(Paths.ADTREE):
+        print(f'No file exists at AdTree executable path: {Paths.ADTREE}, please set in `./pctm/src/config.py`')
         sys.exit()
 
     if args.lod:
