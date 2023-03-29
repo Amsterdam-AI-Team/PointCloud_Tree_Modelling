@@ -146,10 +146,11 @@ This program is free software; you can redistribute it and/or modify it under th
 
 ## Acknowledgements
 
-This repository was created by [Falke Boskaljon](https://falke-boskaljon.nl/) for the City of Amsterdam. Should you have any questions, comments, or suggestions, please contact us.
+This repository was created by [Falke Boskaljon](https://falke-boskaljon.nl/) for the City of Amsterdam. It uses a modified version of [AdTree](https://github.com/tudelft3d/AdTree). For demo purposes we include sample data which was made publicly available by [AHN](https://www.ahn.nl/), and provided to the City of Amsterdam by [Cyclomedia](https://www.cyclomedia.com/en/producten/data-visualisatie/lidar-point-cloud) and [Sonarski](https://sonarski.com/).
 
-Amsterdam Intelligence, City of Amsterdam,
+Should you have any questions, comments, or suggestions, please contact us.
 
-https://www.amsterdamintelligence.com,
+Amsterdam Intelligence, City of Amsterdam\
+https://www.amsterdamintelligence.com
 
 
