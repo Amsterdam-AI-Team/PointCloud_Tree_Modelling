@@ -7,6 +7,8 @@ This repository contains methods for the **automatic extraction of various chara
 
 Example [notebooks](./pctm/notebooks) are provided to demonstrate the tools.
 
+More information on this project can be found in our [blog post](https://www.amsterdamintelligence.com/posts/urban-tree-analysis-using-3d-point-clouds).
+
 ![Comparison of datasets (side-view)](./imgs/pc_comparison.png)
 
 ---
