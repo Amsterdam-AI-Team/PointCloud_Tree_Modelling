@@ -31,6 +31,7 @@ set(ADTREE_EXTERNAL "${ADTREE_ROOT}/3rd_party")
 
 set(ADTREE_glew_INCLUDE_DIR "${ADTREE_EXTERNAL}/glew/include")
 set(ADTREE_glfw_INCLUDE_DIR "${ADTREE_EXTERNAL}/glfw/include")
+set(ADTREE_imgui_INCLUDE_DIR "${ADTREE_EXTERNAL}/imgui")
 set(ADTREE_tetgen_INCLUDE_DIR "${ADTREE_EXTERNAL}/tetgen")
 set(ADTREE_kd_tree_INCLUDE_DIR "${ADTREE_EXTERNAL}/kd_tree")
 set(ADTREE_cminpack_INCLUDE_DIR "${ADTREE_EXTERNAL}/cminpack")

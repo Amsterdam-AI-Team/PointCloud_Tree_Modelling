@@ -13,9 +13,9 @@ Example [notebooks](./pctm/notebooks) are provided to demonstrate the tools.
 
 ## Project Goal
 
-The goal of this project is to automatically extract various features such as height, width, volume, and other characteristics of trees from point clouds. One of the main challenges in this project is the sparsity and non-uniform density of tree point clouds. This project provides an analysis for multiple data sources.
+The goal of this project is to automatically extract various features such as tree height, crown volume, trunk diameter and other characteristics of trees from point clouds. One of the main challenges in this project is the sparsity and non-uniform density of tree point clouds. This project provides an analysis for multiple data sources.
 
-The first solution we provide is a pipeline that extracts various features from a **stand alone trees**. The input of this pipeline is a fully segmentated tree and produces a list of computed characteristics of the tree. These characteristics can be used for research or other purposes.
+We provide a pipeline that extracts various features from a **stand alone tree**. The input of this pipeline is a fully segmentated tree and produces a list of computed characteristics of the tree. These characteristics can be used for research or other purposes.
 
 An example of a volume estimation for a given point cloud tree:
 ![convex_hull.png](./imgs/crown_mesh_comparison.png)
@@ -42,44 +42,71 @@ For a quick dive into this repository take a look at our [complete solution note
 
 ## Installation
 
-This code has been tested with `Python >= 3.10` on `Linux` and `MacOS`, and should likely work under Windows as well.
+This code has been tested with `Python >= 3.8` on `Linux` and `MacOS`, and should likely work under Windows as well. There are two ways for installing the repository:
 
-1.  To use this code in development mode simply clone the repository and install the dependencies.
+### Using Docker-image
+To use this using the docker. Build the provide Dockerfile. code in development mode simply clone the repository and install the dependencies. Note if the image's platform (linux/amd64) does not match the host platform, significant drops in performance can occur.
+
+1. Clone the repository
 
     ```bash
     # Clone the repository
-    git clone <github-url>
-
-    # Install dependencies
-    cd PointCloud_Tree_Modelling
-    python -m pip install -r requirements.txt
+    $ git clone https://github.com/Amsterdam-AI-Team/PointCloud_Tree_Modelling.git
     ```
 
-2.  Build [AdTree](https://github.com/tudelft3d/AdTree)
+2. Build the docker image (the building can take a couple of minutes):
 
-    AdTree depends on some third-party libraries and most dependencies are included in the distribution except 
-    [Boost](https://www.boost.org/). So you will need to have Boost installed first. 
+    ```bash
+    $ docker build -f Dockerfile . -t treemodelling:latest
+    ```
 
-    Note: AdTree uses a stripped earlier version of [Easy3D](https://github.com/LiangliangNan/Easy3D), which is not 
-    compatible with the latest version.
+3. Run docker container (as jupyter server on port 8888):
+
+    ```bash
+    $ docker run -v `pwd`/pctm:/usr/local/app/pctm -v `pwd`/dataset:/usr/local/app/dataset -it -p 8888:8888 treemodelling:latest
+    ```
+
+    The `-v` command is used to mount volumes for both data and code to the container.
+    
+    One could run the image in iteractive mode using the following run command: 
+    ```
+    $ docker run -v `pwd`/pctm:/usr/local/app/pctm -v `pwd`/dataset:/usr/local/app/dataset -it --entrypoint /bin/bash treemodelling:latest
+    ```
+
+
+### Build from scratch
+
+1.  Clone the repository and install the dependencies.
+
+    ```bash
+    # Clone the repository
+    $ git clone https://github.com/Amsterdam-AI-Team/PointCloud_Tree_Modelling.git
+
+    # Install dependencies
+    $ cd PointCloud_Tree_Modelling
+    $ python -m pip install -r requirements.txt
+    ```
+
+2.  Building the AdTree executable 
+
+    In this repository we use a modified version of [AdTree: Accurate, Detailed, and Automatic Modelling of Laser-Scanned Trees.](https://github.com/tudelft3d/AdTree) located in the [`AdTree`](./AdTree) folder. To build the excecutable some third-party libraries and dependencies must be included. Most dependencies are included in the distribution except [Boost](https://www.boost.org/). So you will need to have Boost installed first. 
 
     You need [CMake](https://cmake.org/download/) and of course a compiler to build AdTree:
 
     - CMake `>= 3.1`
     - a compiler that supports `>= C++11`
 
-    AdTree has been tested on macOS (Xcode >= 8), Windows (MSVC >=2015), and Linux (GCC >= 4.8, Clang >= 3.3). Machines 
-    nowadays typically provide higher [support](https://en.cppreference.com/w/cpp/compiler_support), so you should be 
-    able to build AdTree on almost all platforms.
+    AdTree has been tested on macOS (Xcode >= 8), Windows (MSVC >=2015), and Linux (GCC >= 4.8, Clang >= 3.3). Machines nowadays typically provide higher [support](https://en.cppreference.com/w/cpp/compiler_support), so you should be able to build AdTree on almost all platforms.
 
     - Use CMake to generate Makefiles and then build (Linux or macOS).
       ```
-      $ cd AdTree 
-      $ mkdir build
-      $ cd build
+      $ mkdir -p AdTree/Release
+      $ cd AdTree/Release
       $ cmake -DCMAKE_BUILD_TYPE=Release ..
       $ make
       ```
+
+    - **Note:** In order for the python modules to find the build executable, you should set the correct path in [`pctm/src/config.py`](./pctm/src/config.py). For most systems this is something like `../../AdTree/Release/bin/AdTree`.
 
 ---
 
@@ -101,11 +128,13 @@ Some test tree point clouds are provided in the '[`dataset`](./dataset)' folder.
 - Option 2, use the command line to process a complete dataset. First, on has to pre-process the AHN data to create surface files using [AHN Preprocessing.ipynb](./pctm/notebooks/AHN%20Preprocessing.ipynb). Then use the following code.
   
   ```bash
-  cd pctm/scripts
-  python script.py --in_folder '../../dataset' [--lod]
+  $ cd pctm/scripts
+  $ python script.py --in_folder '../../dataset' [--lod]
   ```
 
   The `--lod` argument is optional to produce lod models for the trees.
+  
+  The output is a csv file containing for each tree in the specified data folder a list of estimated tree features. After processing the csv file is written to the specified dataset folder.
 
 ---
 
